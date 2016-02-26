@@ -1,0 +1,266 @@
+library(devtools)
+
+gatherFile<-function(baseDir){
+  ###gathers all the prediction from baseDir/*/*/pathway_activity_testset* format
+  setwd(baseDir)
+  filenames<-system("ls */*/pathway_activity_testset*", intern=TRUE)
+  filenames
+  data=NULL
+  for(i in 1:length(filenames)){
+    ###reading in the filess one at a time
+    f<-read.csv(filenames[i], header=1,row.names=1)
+    colnames(f)<-paste(filenames[i],colnames(f),sep='/')
+    if(i==1){
+      data<-f
+    }
+    else{
+      data<-cbind(data,f)
+    }
+  }
+  return(data)
+}
+
+gatherFile_multi<-function(baseDir){
+  ###gathers all the prediction from baseDir/*/*/pathway_activity_testset* format
+  setwd(baseDir)
+  filenames<-system("ls */*/*/pathway_activity_testset*", intern=TRUE)
+  filenames
+  data=NULL
+  for(i in 1:length(filenames)){
+    ###reading in the filess one at a time
+    f<-read.csv(filenames[i], header=1,row.names=1)
+    colnames(f)<-paste(filenames[i],colnames(f),sep='/')
+    if(i==1){
+      data<-f
+    }
+    else{
+      data<-cbind(data,f)
+    }
+  }
+  return(data)
+}
+
+resistant_or_sensitive=function(value,cutoff){
+  if(value>cutoff){
+    status='S'
+  }
+  else{
+    status='R'
+  }
+  return (status)
+}
+
+short_to_long_TCGA_id=function(longnames=NULL,shortnames=NULL){
+  counter=0
+  for (j in 1:length(shortnames)){
+    if(!is.na(pmatch(shortnames[j],longnames))){
+      shortnames[j]<-longnames[pmatch(shortnames[j],longnames, duplicates.ok=F)]  
+      counter=counter+1
+    }
+  }
+  print(paste(counter,"names have been changed",sep= " "))
+  return(shortnames)
+}
+
+merge_drop<-function(x,y,by=0,...){
+  new_m<-merge(x,y,by=by,...)
+  rownames(new_m)<-new_m$Row.names
+  return(new_m[,2:length(colnames(new_m))])
+}
+
+pcaplot<-function(mat,sub,center=T,scale=T){
+  if(sum(sub)!=length(mat)){
+    print("verify the subscripts...exiting now")
+  }
+  else{
+    pca_mat <- prcomp(t(mat), center=center,scale=scale)
+    plot(pca_mat)
+    plot(pca_mat$x[,1],pca_mat$x[,2])
+    abline(h=0,v=0)
+    for(i in length(sub):1){
+      print(i)
+      if(i!=1){
+        points(pca_mat$x[sum(sub[1:i-1]):sum(sub[1:i])],pca_mat$x[sum(sub[1:i-1]):sum(sub[1:i]),2],col=i,pch=i)
+      }
+      else{
+        points(pca_mat$x[1:sub[i]],pca_mat$x[1:sub[i],2],col=i,pch=i)
+      }
+    }
+  }
+}
+
+assign_easy_multi<-function(trainingData=train, testData=test,
+                            trainingLabel1=NULL, g=100, 
+                            out_dir_base="~/Desktop/tmp", cov=0,
+                            geneList=NULL, single=0, sigma_sZero=0.01,
+                            sigma_sNonZero=1, iter=100000, burn_in=50000,
+                            S_zeroPrior=TRUE, p_beta=0.01){
+  if(cov==0 & single==0){
+    # adapB_folder<-paste(out_dir_base,paste( "adapB_multi",sep=''),sep='/')
+    # dir.create(file.path(out_dir_base,paste( "adapB_multi",sep='')))
+    adap_adap_folder<-paste(out_dir_base,paste( "adap_adap_multi",sep=''),sep='/')
+    dir.create(file.path(out_dir_base,paste( "adap_adap_multi",sep='')))
+  }
+  else if (cov==0 & single==1){
+    # adapB_folder<-paste(out_dir_base,paste( "adapB_single",sep=''),sep='/')
+    # dir.create(file.path(out_dir_base,paste( "adapB_single",sep='')))
+    adap_adap_folder<-paste(out_dir_base,paste( "adap_adap_single",sep=''),sep='/')
+    dir.create(file.path(out_dir_base,paste( "adap_adap_single",sep='')))
+  }
+
+  if(is.null(geneList)){
+    set.seed(1234)
+    # assign.wrapper(trainingData=trainingData, testData=testData,
+                   # trainingLabel=trainingLabel1, geneList=NULL, n_sigGene=g,
+                   # adaptive_B=T, adaptive_S=F, mixture_beta=F,
+                   # S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   # outputDir=adapB_folder, sigma_sZero=sigma_sZero,
+                   # sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in,
+                   # pctUp=0.5)
+
+    set.seed(1234)
+    assign.wrapper(trainingData=trainingData, testData=testData, 
+                   trainingLabel=trainingLabel1, geneList=NULL, n_sigGene=g,
+                   adaptive_B=T, adaptive_S=T, mixture_beta=F,
+                   S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   outputDir=adap_adap_folder, sigma_sZero=sigma_sZero,
+                   sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in,
+                   pctUp=0.5)
+  }
+  else{
+    set.seed(1234)
+    # assign.wrapper(trainingData=trainingData, testData=testData,
+                   # trainingLabel=trainingLabel1, geneList=geneList, n_sigGene=g,
+                   # adaptive_B=T, adaptive_S=F, mixture_beta=F,
+                   # S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   # outputDir=adapB_folder, sigma_sZero=sigma_sZero,
+                   # sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in,
+                   # pctUp=0.5)
+
+    set.seed(1234)
+    assign.wrapper(trainingData=trainingData, testData=testData,
+                   trainingLabel=trainingLabel1, geneList=geneList, n_sigGene=g,
+                   adaptive_B=T, adaptive_S=T, mixture_beta=F,
+                   S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   outputDir=adap_adap_folder, sigma_sZero=sigma_sZero,
+                   sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in,
+                   pctUp=0.5)
+  }
+}
+
+assign_easy_multi_anchor_exclude<-function(trainingData=train, testData=test,
+                            anchorGenes = NULL, excludeGenes = NULL,
+                            trainingLabel1=NULL, g=100, 
+                            out_dir_base="~/Desktop/tmp", cov=0,
+                            geneList=NULL, single=0, sigma_sZero=0.01,
+                            sigma_sNonZero=1, iter=100000, burn_in=50000,
+                            S_zeroPrior=TRUE, p_beta=0.01){
+  if(cov==0 & single==0){
+    # adapB_folder<-paste(out_dir_base,paste( "adapB_multi",sep=''),sep='/')
+    # dir.create(file.path(out_dir_base,paste( "adapB_multi",sep='')))
+    adap_adap_folder<-paste(out_dir_base,paste( "adap_adap_multi",sep=''),sep='/')
+    dir.create(file.path(out_dir_base,paste( "adap_adap_multi",sep='')))
+  }
+  else if (cov==0 & single==1){
+    # adapB_folder<-paste(out_dir_base,paste( "adapB_single",sep=''),sep='/')
+    # dir.create(file.path(out_dir_base,paste( "adapB_single",sep='')))
+    adap_adap_folder<-paste(out_dir_base,paste( "adap_adap_single",sep=''),sep='/')
+    dir.create(file.path(out_dir_base,paste( "adap_adap_single",sep='')))
+  }
+  
+  if(is.null(geneList)){
+    set.seed(1234)
+    # assign.wrapper(trainingData=trainingData, testData=testData,
+                   # anchorGenes=anchorGenes,excludeGenes=excludeGenes,
+                   # trainingLabel=trainingLabel1, geneList=NULL, n_sigGene=g,
+                   # adaptive_B=T, adaptive_S=F, mixture_beta=F,
+                   # S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   # outputDir=adapB_folder, sigma_sZero=sigma_sZero,
+                   # sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in)
+    
+    set.seed(1234)
+    assign.wrapper(trainingData=trainingData, testData=testData, 
+                   anchorGenes=anchorGenes,excludeGenes=excludeGenes,
+                   trainingLabel=trainingLabel1, geneList=NULL, n_sigGene=g,
+                   adaptive_B=T, adaptive_S=T, mixture_beta=F,
+                   S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   outputDir=adap_adap_folder, sigma_sZero=sigma_sZero,
+                   sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in)
+  }
+  else{
+    set.seed(1234)
+    # assign.wrapper(trainingData=trainingData, testData=testData,
+                   # anchorGenes=anchorGenes,excludeGenes=excludeGenes,
+                   # trainingLabel=trainingLabel1, geneList=geneList, n_sigGene=g,
+                   # adaptive_B=T, adaptive_S=F, mixture_beta=F,
+                   # S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   # outputDir=adapB_folder, sigma_sZero=sigma_sZero,
+                   # sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in)
+    
+    set.seed(1234)
+    assign.wrapper(trainingData=trainingData, testData=testData,
+                   anchorGenes=anchorGenes,excludeGenes=excludeGenes,
+                   trainingLabel=trainingLabel1, geneList=geneList, n_sigGene=g,
+                   adaptive_B=T, adaptive_S=T, mixture_beta=F,
+                   S_zeroPrior=S_zeroPrior, p_beta=p_beta,
+                   outputDir=adap_adap_folder, sigma_sZero=sigma_sZero,
+                   sigma_sNonZero=sigma_sNonZero, iter=iter, burn_in=burn_in)
+  }
+}
+
+testSig <- function(sigProtein, numGenes=NA, geneList =NULL, trainingData,
+                    testData, trainingLabels, sigma_sZero=0.01,
+                    sigma_sNonZero=1, S_zeroPrior=TRUE, p_beta=0.01){
+  names(sigProtein)=names(geneList)=strsplit(sigProtein,"_")[[1]][1]
+  trainingLabel<-list(control=list(sigProtein=1:trainingLabels[1]),sigProtein=(trainingLabels[1]+1):(trainingLabels[1]+trainingLabels[2]))
+  names(trainingLabel$control)=names(trainingLabel)[2]=names(sigProtein)
+  if(is.na(numGenes)){
+    sub_dir<-paste(basedir,paste(sigProtein,"gene_list", sep="_"),sep='/')
+  }
+  else{
+    sub_dir<-paste(basedir,paste(sigProtein,numGenes,"gene_list", sep="_"),sep='/')
+  }
+  dir.create(sub_dir)
+  assign_easy_multi(trainingData=trainingData, test=testData,
+                    trainingLabel1=trainingLabel, g=numGenes, geneList=geneList,
+                    out_dir_base=sub_dir, single=1, p_beta=p_beta,
+                    sigma_sZero=sigma_sZero, sigma_sNonZero=sigma_sNonZero,
+                    S_zeroPrior=S_zeroPrior)
+}
+
+getGeneList <- function(rDataPath){
+  load(rDataPath)
+  #for a gene list
+  output.data$processed.data$diffGeneList
+  #signature matrix with coefficients
+  output.data$processed.data$S_matrix
+}
+
+writeFile <- function(variable, filename){
+  write.table(variable, filename ,sep='\t', col.names=NA,quote=F)
+}
+
+testSig_multi <- function(sigProteins, numGenes=NA,geneList =NULL, trainingData,
+                          testData, trainingLabel,sigma_sZero=0.01,
+                          sigma_sNonZero=1, S_zeroPrior=TRUE, p_beta=0.01){
+  sub_dir<-paste(basedir,paste(sigProteins,"gene_list", sep="_"),sep='/')
+  dir.create(sub_dir)
+  assign_easy_multi(trainingData=trainingData, test=testData,
+                    trainingLabel1=trainingLabel, g=numGenes, geneList=geneList,
+                    out_dir_base=sub_dir, sigma_sZero=sigma_sZero,
+                    sigma_sNonZero=sigma_sNonZero, S_zeroPrior=S_zeroPrior,
+                    p_beta=p_beta)
+}
+make_dicotomous_boxplots <- function(num_col, cat_col, title) {
+  pos <- num_col[cat_col == "Positive"]
+  neg <- num_col[cat_col == "Negative"]
+  t_test <- t.test(neg, pos)
+  boxplot2(
+    neg,
+    pos,
+    names = c("Negative", "Positive"),
+    main = paste(title, "\np-value=", round(t_test$p.value, digits = 5), sep =
+                   " ")
+  )
+  
+}
