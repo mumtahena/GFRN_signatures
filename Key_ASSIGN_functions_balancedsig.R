@@ -251,6 +251,7 @@ testSig_multi <- function(sigProteins, numGenes=NA,geneList =NULL, trainingData,
                     sigma_sNonZero=sigma_sNonZero, S_zeroPrior=S_zeroPrior,
                     p_beta=p_beta)
 }
+
 make_dicotomous_boxplots <- function(num_col, cat_col, title) {
   pos <- num_col[cat_col == "Positive"]
   neg <- num_col[cat_col == "Negative"]

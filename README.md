@@ -1,9 +1,12 @@
 # GFRN_signatures
+
 This repository presents analysis done for the paper "Genomic signature networks identify unique growth phenotypes and predict drug response in breast cancer patients." 
 
 # Datasets
+
 You will need to have the following datasets for running the analyses:
-1. ICBP breast cancer cell line  gene expression dataset: icbp_Rsubread_tpmlog.txt
+
+1. ICBP breast cancer cell line gene expression dataset: icbp_Rsubread_tpmlog.txt
 2. ICBP breast cancer cell line drug response dataset: ICBP_drugs.txt 
 3. TCGA brest cancer tumor gene expression dataset
 4. TCGA "normal" adjacent breast cancer gene expression dataset
