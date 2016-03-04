@@ -7,7 +7,7 @@ This repository presents analysis done for the paper "Genomic signature networks
 You will need to have the following datasets for running the analyses:
 
 1. ICBP breast cancer cell line gene expression dataset: icbp_Rsubread_tpmlog.txt
-2. ICBP breast cancer cell line drug response dataset: ICBP_drugs.txt<https://static-content.springer.com/esm/art%3A10.1186%2Fs13059-015-0658-5/MediaObjects/13059_2015_658_MOESM2_ESM.xlsx> 
+2. ICBP breast cancer cell line drug response dataset: [ICBP_drugs.txt](https://static-content.springer.com/esm/art%3A10.1186%2Fs13059-015-0658-5/MediaObjects/13059_2015_658_MOESM2_ESM.xlsx)
 3. TCGA brest cancer tumor gene expression dataset
 4. TCGA "normal" adjacent breast cancer gene expression dataset
 5. TCGA PAM50 classification of tumor samples
