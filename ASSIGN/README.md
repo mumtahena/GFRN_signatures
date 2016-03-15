@@ -29,7 +29,7 @@ install_github("wevanjohnson/sva-devel", ref="2e87233c3797c3a630d3cf662e2ee08dfe
 install_github("wevanjohnson/ASSIGN", ref="fa6621a31629d9a122b9a2bcaa724f7d8f2c02ce")
 ```
 
-## Running the Scripts
+## Running the ASSIGN Scripts
 
 The script ```ASSIGN_merge_and_combat.R``` will load the data, run batch
 correction, and save an rsession that can be loaded by
@@ -74,8 +74,23 @@ Rscript ASSIGN_run_predictions_single.R 9 350
 The pathway prediction values for each ASSIGN run can be found in the
 ```pathway_activity_testset.csv``` file in each pathway's subdirectory.
 
+## Protein and Drug Correlation Scripts
+
+After running ASSIGN, we correlate the pathway activity predictions to drug response and RPPA data
+
+> Run the following scripts in your ASSIGN working directory:
+
+```
+Rscript icbp_cor.R
+Rscript icbp_prot_analysis.R
+Rscript tcga_prot_analysis.R
+```
+
+
 ## Other Required Files:
 
 * ```Key_ASSIGN_functions_balancedsig.R``` - Internal R functions used by
-```ASSIGN_merge_and_combat.R``` and ```ASSIGN_run_predictions_single.R```.
-This file is available in this repository
+```ASSIGN_merge_and_combat.R```,```ASSIGN_run_predictions_single.R``` and the correlation scripts. This file is available in this repository
+* ICBP breast cancer cell line drug response dataset: [ICBP_drugs.txt](https://static-content.springer.com/esm/art%3A10.1186%2Fs13059-015-0658-5/MediaObjects/13059_2015_658_MOESM2_ESM.xlsx) for ```icbp_cor.R```
+* ICBP breast cancer cell line  RPPA data: ```proteomics.txt``` for ```icbp_prot_analysis.R```
+* TCGA breast cancer RPPA data: ```TCGA-BRCA-RBN.csv``` for ```tcga_prot_analysis.R```
