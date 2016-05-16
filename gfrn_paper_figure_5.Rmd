@@ -1,0 +1,91 @@
+---
+title: "gfrn_paper_figure_5.Rmd"
+author: "David Jenkins"
+date: "May 16, 2016"
+output: html_document
+---
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(gridExtra)
+#install development version of ComplexHeatmap https://github.com/jokergoo/ComplexHeatmap
+library(ComplexHeatmap)
+library(data.table)
+library(RColorBrewer)
+library(cluster)
+
+#Input files (Modify These to Your System's Locations)
+icbp_predictions_file <- file.path("optimized_single_pathway_icbp.txt")
+icbp_status_file <- file.path("data","icbpstatus.txt")
+icbp_intrinsic_file <- file.path("data","intrinsic.txt")
+
+#input icbp pathway data
+single_pathway_best_icbp <-read.table(icbp_predictions_file, stringsAsFactors=FALSE,
+                                      header=1, row.names=1,sep='\t')
+
+#color pallete
+my_palette <- colorRampPalette(c("darkblue","aliceblue","brown4"))(n = 299)
+
+#top annotation
+phenotype.annotation <- data.frame(Phenotype=c("HER2/IGF1R/AKT Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "HER2/IGF1R/AKT Phenotype",
+                                               "HER2/IGF1R/AKT Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype"))
+topha <- HeatmapAnnotation(df = phenotype.annotation,
+                           col = list(Phenotype = c("HER2/IGF1R/AKT Phenotype" =  "coral3",
+                                                    "BAD/EGFR/KRAS/RAF1 Phenotype" = "aquamarine4")),
+                           height = unit(0.333, "cm"))
+
+#IHC Subtypes ICBP
+icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
+
+#Intrinsic Subtypes ICBP
+intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
+colnames(intrinsic) <- "Intrinsic.Subtype"
+rownames(intrinsic)[50] <- "T47D.Kbluc"
+intrinsic <- intrinsic[rownames(single_pathway_best_icbp),,drop=F]
+intrinsic <- cbind(icbp_status, intrinsic)
+
+subset_celllines <- c("HCC1806","HCC1937","HCC1143","MDAMB231","HS578T","HCC1954","JIMT1",
+                      "HCC38","BT549","HCC70","AU565","MDAMB175","BT474","HCC1419","HCC1428",
+                      "ZR751","BT483","CAMA1","T47D","MCF7")
+subset_celllines %in% rownames(single_pathway_best_icbp)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+set.seed(123)
+
+ha_row_icbp1 = HeatmapAnnotation(df = intrinsic[subset_celllines,],
+                                 name="Intrinsic Subtype",
+                                 col = list(PR = c("Positive" =  "#4DAF4A",
+                                                   "Negative" = "#984EA3",
+                                                   "Unavailable" = "grey"),
+                                       HER2 = c("Positive" =  "#FFFF33",
+                                                "Negative" = "#F781BF",
+                                                "Unavailable" = "grey"),
+                                       ER = c("Positive" =  "#E41A1C",
+                                              "Negative" = "#377EB8",
+                                              "Unavailable" = "grey"),
+                                       Intrinsic.Subtype = c("Basal" = brewer.pal(6, "Dark2")[1],
+                                                             "Claudin-low" = brewer.pal(6, "Dark2")[2],
+                                                             "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                             "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                             "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                             "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                             "Unavailable" = "grey")),
+                                 which = "row", width = unit(1.333, "cm"), show_legend = T)
+
+h1 <- Heatmap(scale(single_pathway_best_icbp[subset_celllines,c(1:6,8)]), cluster_rows = T, cluster_columns = T,
+              show_row_names = T, show_column_names = T, row_title_gp = gpar(fontsize =10),row_names_side = "left",
+              combined_name_fun = NULL, name="Scaled\nPathway\nActivity",col=my_palette,
+              top_annotation = topha, column_title = "ICBP", show_heatmap_legend = T,
+              column_dend_reorder = c(1,100,100,10,1,100,100))
+
+#pdf("icbp_fig5.pdf", width=7, height=7)
+draw(h1+ha_row_icbp1,row_dend_side = "left", annotation_legend_side = "bottom")
+#dev.off()
+```
