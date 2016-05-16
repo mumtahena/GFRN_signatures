@@ -1,0 +1,258 @@
+---
+title: "GFRN Paper Figure 3"
+author: "David Jenkins"
+date: "May 16, 2016"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: "united"
+---
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(gridExtra)
+#install development version of ComplexHeatmap https://github.com/jokergoo/ComplexHeatmap
+library(ComplexHeatmap)
+library(data.table)
+library(RColorBrewer)
+library(cluster)
+
+#Input files (Modify These to Your System's Locations)
+icbp_predictions_file <- file.path("optimized_single_pathway_icbp.txt")
+tcga_predictions_file <- file.path("optimized_single_pathway_tcga.txt")
+icbp_status_file      <- file.path("data", "icbpstatus.txt")
+icbp_intrinsic_file   <- file.path("data", "intrinsic.txt")
+tcga_status_rds_file  <- file.path("data", "tcga_er_pr_her2_formatted.rds")
+tcga_intrinsic_file   <- file.path("data", "TCGA_single_pathway_best_phenotype_intrinsic.txt")
+
+#input icbp pathway data
+single_pathway_best_icbp <-read.table(icbp_predictions_file, stringsAsFactors=FALSE,
+                                      header=1, row.names=1,sep='\t')
+
+#input tcga pathway data
+single_pathway_best_tcga <-read.table(tcga_predictions_file, stringsAsFactors=FALSE,
+                                      header=1, row.names=1,sep='\t')
+rownames(single_pathway_best_icbp)[50] <- "T47D.Kbluc"
+
+#color pallete
+my_palette <- colorRampPalette(c("darkblue","aliceblue","brown4"))(n = 299)
+
+#top annotation
+phenotype.annotation <- data.frame(Phenotype=c("HER2/IGF1R/AKT Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "HER2/IGF1R/AKT Phenotype",
+                                               "HER2/IGF1R/AKT Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype",
+                                               "BAD/EGFR/KRAS/RAF1 Phenotype"))
+topha <- HeatmapAnnotation(df = phenotype.annotation,
+                           col = list(Phenotype = c("HER2/IGF1R/AKT Phenotype" =  "coral3",
+                                                    "BAD/EGFR/KRAS/RAF1 Phenotype" = "aquamarine4")),
+                           height = unit(0.333, "cm"))
+
+#IHC Subtypes ICBP
+icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
+
+#Intrinsic Subtypes ICBP
+intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
+colnames(intrinsic) <- "Intrinsic.Subtype"
+rownames(intrinsic)[50] <- "T47D.Kbluc"
+intrinsic <- intrinsic[rownames(single_pathway_best_icbp),,drop=F]
+intrinsic <- cbind(icbp_status, intrinsic)
+
+#IHC Subtypes TCGA
+er_pr_her2_status2 <- readRDS(tcga_status_rds_file)
+
+#Intrinsic Subtypes TCGA
+tcgaintrinsic <- read.table(tcga_intrinsic_file, 
+                            row.names = 1, header=T, sep="\t")
+tcgaintrinsic <- tcgaintrinsic[rownames(single_pathway_best_tcga),12,drop=F]
+tcgaintrinsic$PAM50 <- as.character(tcgaintrinsic$PAM50)
+rownames(tcgaintrinsic) <- rownames(single_pathway_best_tcga)
+tcgaintrinsic$PAM50[is.na(tcgaintrinsic$PAM50)] <- "Unavailable"
+tcgaintrinsic <- cbind(er_pr_her2_status2, tcgaintrinsic)
+```
+
+## (A): TCGA, all pathways
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+ha_row_tcga2 = HeatmapAnnotation(df = tcgaintrinsic,
+                                col = list(PR.Status = c("Positive" =  "#4DAF4A",
+                                                         "Negative" = "#984EA3",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           HER2.Status = c("Positive" =  "#FFFF33",
+                                                           "Negative" = "#F781BF",
+                                                           "Indeterminate" = "black",
+                                                           "Equivocal" = "skyblue",
+                                                           "Unavailable" = "grey"),
+                                           ER.Status = c("Positive" =  "#E41A1C",
+                                                         "Negative" = "#377EB8",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           PAM50 = c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                     "LumB" = brewer.pal(6, "Dark2")[2],
+                                                     "Her2" = brewer.pal(6, "Dark2")[4],
+                                                     "Basal" = brewer.pal(6, "Dark2")[1],
+                                                     "Normal" = brewer.pal(6, "Dark2")[6],
+                                                     "Unavailable"="grey")),
+                                which = "row", width = unit(1.333, "cm"), show_legend = T)
+
+h1 <- Heatmap(scale(single_pathway_best_tcga[,c(1:6,8)]), cluster_rows = T, cluster_columns = T,
+              show_row_names = F, show_column_names = T, row_title_gp = gpar(fontsize =10),
+              combined_name_fun = NULL,col=my_palette, top_annotation = topha,
+              name="Scaled\nPathway\nActivity", column_title = "TCGA BRCA", show_heatmap_legend = T,
+              column_dend_reorder = c(1,100,100,10,1,100,100))
+
+#pdf("tcga.pdf", width=6)
+draw(h1+ha_row_tcga2,row_dend_side = "left", annotation_legend_side = "bottom")
+#dev.off()
+```
+
+## (B): ICBP, all pathways
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+set.seed(123)
+
+ha_row_icbp1 = HeatmapAnnotation(df = intrinsic,
+                                 name="Intrinsic Subtype",
+                                 col = list(PR = c("Positive" =  "#4DAF4A",
+                                                   "Negative" = "#984EA3",
+                                                   "Unavailable" = "grey"),
+                                       HER2 = c("Positive" =  "#FFFF33",
+                                                "Negative" = "#F781BF",
+                                                "Unavailable" = "grey"),
+                                       ER = c("Positive" =  "#E41A1C",
+                                              "Negative" = "#377EB8",
+                                              "Unavailable" = "grey"),
+                                       Intrinsic.Subtype = c("Basal" = brewer.pal(6, "Dark2")[1],
+                                                             "Claudin-low" = brewer.pal(6, "Dark2")[2],
+                                                             "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                             "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                             "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                             "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                             "Unavailable" = "grey")),
+                                 which = "row", width = unit(1.333, "cm"), show_legend = T)
+
+h1 <- Heatmap(scale(single_pathway_best_icbp[,c(1:6,8)]), cluster_rows = T, cluster_columns = T,
+              show_row_names = F, show_column_names = T, row_title_gp = gpar(fontsize =10),
+              combined_name_fun = NULL, name="Scaled\nPathway\nActivity",col=my_palette,
+              top_annotation = topha, column_title = "ICBP", show_heatmap_legend = T,
+              column_dend_reorder = c(1,100,100,10,1,100,100))
+
+#pdf("icbp.pdf", width=6)
+draw(h1+ha_row_icbp1,row_dend_side = "left", annotation_legend_side = "bottom")
+#dev.off()
+```
+
+## (C): TCGA, k-means of 4 pathways
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+set.seed(123)
+kmeans.4 <- kmeans(scale(single_pathway_best_tcga)[,c(1,2,3,4)], 4, iter.max=10000, nstart = 1000)
+kmeans.4.clusters.tcga <-data.frame(kmeans.4$cluster)
+kmeans.4.clusters.tcga[kmeans.4.clusters.tcga$kmeans.4.cluster == "3",] <- "AKT/HER2 high"
+kmeans.4.clusters.tcga[kmeans.4.clusters.tcga$kmeans.4.cluster == "1",] <- "AKT/HER2 low"
+kmeans.4.clusters.tcga[kmeans.4.clusters.tcga$kmeans.4.cluster == "2",] <- "EGFR/BAD low"
+kmeans.4.clusters.tcga[kmeans.4.clusters.tcga$kmeans.4.cluster == "4",] <- "EGFR/BAD high"
+
+colnames(kmeans.4.clusters.tcga) <- "KMeans.Clusters"
+ha_row_tcga = HeatmapAnnotation(df = kmeans.4.clusters.tcga,
+                                col = list(KMeans.Clusters = c("AKT/HER2 high" = brewer.pal(5, "Set1")[1],
+                                                                "AKT/HER2 low" = brewer.pal(5, "Set1")[2],
+                                                                "EGFR/BAD high" = brewer.pal(5, "Set1")[3],
+                                                                "EGFR/BAD low" = brewer.pal(5, "Set1")[5])),
+                                which = "row", width = unit(0.333, "cm"), show_legend = T)
+ha_row_tcga2 = HeatmapAnnotation(df = tcgaintrinsic,
+                                col = list(PR.Status = c("Positive" =  "#4DAF4A",
+                                                         "Negative" = "#984EA3",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           HER2.Status = c("Positive" =  "#FFFF33",
+                                                           "Negative" = "#F781BF",
+                                                           "Indeterminate" = "black",
+                                                           "Equivocal" = "skyblue",
+                                                           "Unavailable" = "grey"),
+                                           ER.Status = c("Positive" =  "#E41A1C",
+                                                         "Negative" = "#377EB8",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           PAM50 = c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                     "LumB" = brewer.pal(6, "Dark2")[2],
+                                                     "Her2" = brewer.pal(6, "Dark2")[4],
+                                                     "Basal" = brewer.pal(6, "Dark2")[1],
+                                                     "Normal" = brewer.pal(6, "Dark2")[6],
+                                                     "Unavailable"="grey")),
+                                which = "row", width = unit(1.333, "cm"), show_legend = T)
+
+h1 <- Heatmap(scale(single_pathway_best_tcga[,c(1:4)]), cluster_rows = T, cluster_columns = T,
+              show_row_names = F, show_column_names = T,
+              split=factor(kmeans.4.clusters.tcga$KMeans.Clusters,
+                           levels=c("AKT/HER2 high","AKT/HER2 low","EGFR/BAD high","EGFR/BAD low")),
+              row_title_gp = gpar(fontsize =10), column_dend_reorder = c(1,4,100,2),
+              combined_name_fun = NULL,col=my_palette, top_annotation = topha,
+              name="Scaled\nPathway\nActivity", column_title = "TCGA BRCA", show_heatmap_legend = T)
+
+#pdf("tcga_kmeans4.pdf", width=5.32)
+draw(ha_row_tcga+h1+ha_row_tcga2,row_dend_side = "left", annotation_legend_side = "bottom")
+#dev.off()
+```
+
+## (D): ICBP, k-means of 4 pathways
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+set.seed(123)
+kmeans.4 <- kmeans(scale(single_pathway_best_icbp)[,c(1,2,3,4)], 4, iter.max=100000, nstart = 100)
+kmeans.4.clusters <-data.frame(kmeans.4$cluster)
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "3",] <- "EGFR/BAD low"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "1",] <- "EGFR/BAD high"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "4",] <- "AKT/HER2 high"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "2",] <- "AKT/HER2 low"
+colnames(kmeans.4.clusters) <- "KMeans.Clusters"
+kmeans.4.clusters <- cbind(intrinsic, kmeans.4.clusters)
+
+ha_row_icbp1 = HeatmapAnnotation(df = kmeans.4.clusters[,1:4,drop=F],
+                                 name="Intrinsic Subtype",
+                                 col = list(PR = c("Positive" =  "#4DAF4A",
+                                                   "Negative" = "#984EA3",
+                                                   "Unavailable" = "grey"),
+                                       HER2 = c("Positive" =  "#FFFF33",
+                                                "Negative" = "#F781BF",
+                                                "Unavailable" = "grey"),
+                                       ER = c("Positive" =  "#E41A1C",
+                                              "Negative" = "#377EB8",
+                                              "Unavailable" = "grey"),
+                                       Intrinsic.Subtype = c("Basal" = brewer.pal(6, "Dark2")[1],
+                                                             "Claudin-low" = brewer.pal(6, "Dark2")[2],
+                                                             "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                             "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                             "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                             "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                             "Unavailable" = "grey")),
+                                 which = "row", width = unit(1.333, "cm"), show_legend = T)
+
+ha_row_icbp2 = HeatmapAnnotation(df = kmeans.4.clusters[,5,drop=F],
+                                 name="K-Means Clusters",
+                                col = list(KMeans.Clusters = c("AKT/HER2 high" = brewer.pal(5, "Set1")[1],
+                                                                "AKT/HER2 low" = brewer.pal(5, "Set1")[2],
+                                                                "EGFR/BAD high" = brewer.pal(5, "Set1")[3],
+                                                                "EGFR/BAD low" = brewer.pal(5, "Set1")[5])),
+                                which = "row", width = unit(0.333, "cm"), show_legend = T)
+
+topha_4 <- HeatmapAnnotation(df = phenotype.annotation[c(1:4),, drop=F],
+                        col = list(Phenotype = c("HER2/IGF1R/AKT Phenotype" =  "coral3",
+                                                 "BAD/EGFR/KRAS/RAF1 Phenotype" = "aquamarine4")),
+                        height = unit(0.333, "cm"))
+
+h1 <- Heatmap(scale(single_pathway_best_icbp[,c(1,2,3,4)]), cluster_rows = T,
+              cluster_columns = T, column_dend_reorder = c(1,4,4,1), show_row_names = F,
+              show_column_names = T, split=kmeans.4.clusters$KMeans.Clusters,row_title_gp = gpar(fontsize =10),
+              combined_name_fun = NULL, name="Scaled\nPathway\nActivity",col=my_palette,
+              top_annotation = topha, column_title = "ICBP", show_heatmap_legend = T)
+
+#pdf("icbp_kmeans4.pdf", width=5.32)
+draw(ha_row_icbp2+h1+ha_row_icbp1, row_dend_side = "left", annotation_legend_side = "bottom")
+#dev.off()
+```
