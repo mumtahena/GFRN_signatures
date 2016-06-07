@@ -118,6 +118,7 @@ test<-data.frame(fread(tcga_brca_tumor_gene_expression), check.names=F,row.names
 test_f<-test[apply(test[,1:ncol(test)]==0,1,mean) < 0.85,]
 dim(test_f)
 pca_mat <- prcomp(t(test_f), center=T,scale=T)
+###TCGA clinical data analysis##
 clinicals<-data.frame(fread(tcga_clinical), check.names=F,row.names=1)
 er_pr_her2_status<-t(clinicals[c("er_status_by_ihc","pr_status_by_ihc","her2_status_by_ihc"),])
 er_pr_her2_status<- er_pr_her2_status[3:nrow(er_pr_her2_status),]
@@ -227,7 +228,7 @@ brca_subtypes<-read.table("~/Dropbox/bild_signatures/Datasets/BRCA.547.PAM50.Sig
 subtypes_preds<-merge(single_pathway_best_tcga,pam50,by.x = 0,by.y = 0,all.x =T)
 rownames(subtypes_preds)<-subtypes_preds$Row.names
 subtypes_preds<-subtypes_preds[,2:ncol(subtypes_preds)]
-
+levels(subtypes_preds$PAM50)[5]<-NA#removing samples with "Normal" subtypes
 boxplot2(subtypes_preds$AKT~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="AKT Activity",ylim=c(0,1),las=1)
 boxplot2(subtypes_preds$BAD~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="BAD Activity",ylim=c(0,1),las=1)
 

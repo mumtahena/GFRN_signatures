@@ -47,7 +47,7 @@ source('~/Dropbox/bild_signatures/bild_signatures/Code/Key_ASSIGN_functions_bala
 icbp<-as.matrix(read.table(icbp_gene_expression, sep='\t', stringsAsFactors=FALSE, header=1, row.names=1))
 icbp_f <-icbp[apply(icbp[,1:55]==0,1,mean) < 0.85,]
 pca_mat_icbp <- prcomp(t(icbp_f), center=T,scale=T)
-
+cumsum((pca_mat_icbp$sdev)^2) / sum(pca_mat_icbp$sdev^2) #calculates cumulative proportiono of variances
 plot(pca_mat_icbp,main="ICBP")
 plot(pca_mat_icbp$x[,2], type="o",col="blue",ylab = "Principal component values",xlab="ICBP samples", main="")
 lines(pca_mat_icbp$x[,3],type="o",pch=22,col="red")
@@ -76,6 +76,7 @@ er_pr_her2_status<-t(clinicals[c("er_status_by_ihc","pr_status_by_ihc","her2_sta
 er_pr_her2_status<- er_pr_her2_status[3:nrow(er_pr_her2_status),]
 com_tcga_er_pr_her2<-merge_drop(pca_mat$x,er_pr_her2_status)
 
+cumsum((pca_mat$sdev)^2) / sum(pca_mat$sdev^2) #calculates cumulative proportiono of variances
 plot(pca_mat,main="PCA in TCGA BRCA")
 plot(pca_mat$x[,1],(apply(test_f,2,mean)), main="Average expression vs PC1\n in TCGA samples")
 cor.test(pca_mat$x[,1],(apply(test_f,2,mean)))
@@ -157,15 +158,26 @@ heatmap.2(as.matrix(cor(pca_mat_normal$x[,1:5],method="spearman")),col=my_palett
 single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file,stringsAsFactors=FALSE, header=1, row.names=1,sep='\t')
 
 brca_subtypes<-read.table("~/Dropbox/bild_signatures/Datasets/BRCA.547.PAM50.SigClust.Subtypes.txt",header=1,row.names=1, sep='\t')
+single_pathway_best_tcga<-read.table("~/Desktop/optimized_single_pathway_tcga.txt",sep='\t',stringsAsFactors=FALSE, header=1, row.names=1)
 subtypes_preds<-merge(single_pathway_best_tcga,pam50,by.x = 0,by.y = 0,all.x =T)
 rownames(subtypes_preds)<-subtypes_preds$Row.names
 subtypes_preds<-subtypes_preds[,2:ncol(subtypes_preds)]
 
 boxplot2(subtypes_preds$AKT~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="AKT Activity",ylim=c(0,1),las=1)
 boxplot2(subtypes_preds$BAD~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="BAD Activity",ylim=c(0,1),las=1)
+boxplot2(subtypes_preds$HER2~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="HER2 Activity",ylim=c(0,1),las=1)
 
 ord_subtypes_preds<-subtypes_preds[order(subtypes_preds$PAM50),]
 
+subtypes_preds_ihc<-merge(single_pathway_best_tcga,er_pr_her2_status,by.x = 0,by.y = 0,all.x =T)
+
+er_pos<-subtypes_preds_ihc[subtypes_preds_ihc$er_status_by_ihc=="Positive",]
+er_neg<-subtypes_preds_ihc[subtypes_preds_ihc$er_status_by_ihc=="Negative",]
+pr_pos<-subtypes_preds_ihc[subtypes_preds_ihc$pr_status_by_ihc=="Positive",]
+pr_neg<-subtypes_preds_ihc[subtypes_preds_ihc$pr_status_by_ihc=="Negative",]
+her_pos<-subtypes_preds_ihc[subtypes_preds_ihc$her2_status_by_ihc=="Positive",]
+her_neg<-subtypes_preds_ihc[subtypes_preds_ihc$her2_status_by_ihc=="Negative",]
+boxplot2(her_pos$HER2,her_neg$HER2,col=c(2,4),ylab="HER2 Activity",ylim=c(0,1),las=1,names=c("HER2 +","HER2 -"))
 
 heatmap.2(
   scale(ord_subtypes_preds[,1:8],center = T,scale=T),RowSideColors = c(

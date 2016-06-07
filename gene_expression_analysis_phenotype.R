@@ -10,7 +10,7 @@ single_pathway_best_icbp<-gatherFile("~/Desktop/20160201_ICBP_single_anchorGenes
   ,"her2_10_gene_list/adap_adap_single/pathway_activity_testset.csv/her2"
   ,"igf1r_100_gene_list/adap_adap_single/pathway_activity_testset.csv/igf1r"
   ,"krasgv_175_gene_list/adap_adap_single/pathway_activity_testset.csv/krasgv"
-  ,"krasqh_300_gene_list/adap_adap_single/pathway_activity_testset.csv/krasqh"
+  #,"krasqh_300_gene_list/adap_adap_single/pathway_activity_testset.csv/krasqh"
   ,"raf_350_gene_list/adap_adap_single/pathway_activity_testset.csv/raf"
 )]
 colnames(single_pathway_best_icbp) <-
@@ -23,6 +23,11 @@ single_pathway_best_icbp[,1:8]<- scale(single_pathway_best_icbp[,1:8],scale = T,
 
 akt<-apply(single_pathway_best_icbp[,c(1,4,5)],1,mean)
 egfr<-apply(single_pathway_best_icbp[,c(2,3,6:8)],1,mean)
+single_pathway_best_icbp[,1:7]<- scale(single_pathway_best_icbp[,1:7],scale = T,center = T)
+
+akt<-apply(single_pathway_best_icbp[,c(1,4,5)],1,mean)
+egfr<-apply(single_pathway_best_icbp[,c(2,3,6:8)],1,mean)
+
 for(i in 1:nrow(single_pathway_best_icbp))
 { print(i)
   if(akt[[i]] > egfr[[i]]){
