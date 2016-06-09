@@ -22,6 +22,8 @@ single_pathway_best_icbp <-read.table(icbp_predictions_file, stringsAsFactors=FA
 
 drugs<-read.delim(drug_response_file, header=1, sep='\t',row.names=1)
 
+rownames(single_pathway_best_icbp)[50] <- "T47D.Kbluc"
+
 rownames(drugs)[38] <- "SUM1315"
 rownames(drugs)[45] <- "T47D.Kbluc"
 rownames(drugs)[52] <- "MDAMB175"
@@ -53,7 +55,9 @@ plot_drug_boxplots_final <- function(drugdata, clusters, selected, fillcolor){
   theplot <- ggplot(merged_melt_s, aes(factor(clusters), value)) +
     geom_boxplot(outlier.shape = NA, fill=fillcolor) + 
     theme_classic() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
     xlab("") +
     ylab("-log(EC50)") +
     geom_point(position=position_jitter(width = 0.1)) +
