@@ -37,19 +37,6 @@ col_breaks = c(seq(0,0.2,length=100), seq(0.2,0.4,length=100), seq(0.4,1,length=
 
 ```
 
-from david
-```{r}
-library(ggplot2)
-library(gridExtra)
-#install development version of ComplexHeatmap https://github.com/jokergoo/ComplexHeatmap
-library(ComplexHeatmap)
-library(cluster)
-
-```
-
-
-
-
 Specify Input Files (modify these locations for your system)
 ```{r}
 
@@ -102,79 +89,6 @@ assay_ec50<-read.table("~/Documents/PhDProjects/Multipathway_Modeling/Data//Drug
 
 ```
 
-
-Davids drug stuff
-```{r}
-
-
-
-
-rownames(drugs)[38] <- "SUM1315"
-rownames(drugs)[45] <- "T47D.Kbluc"
-rownames(drugs)[52] <- "MDAMB175"
-
-drugs_all <- drugs[rownames(single_pathway_best_icbp),11:100]
-
-drugs <- drugs[rownames(single_pathway_best_icbp),c("GSK2141795","PF.4691502","Everolimus","Sigma.AKT1.2.inhibitor","GSK1059868",
-                                                    "Rapamycin","Temsirolimus","GSK2126458" ,"GSK2119563","GSK1059615","Lapatinib",
-                                                    "AG1478","Gefitinib","AZD6244","Erlotinib","GSK1120212","Docetaxel","CGC.11047",
-                                                    "Paclitaxel","Cisplatin")]
-
-set.seed(123)
-kmeans.4 <- kmeans(scale(single_pathway_best_icbp)[,c(1,2,3,4)], 4, iter.max=100000, nstart = 100)
-kmeans.4.clusters <-data.frame(kmeans.4$cluster)
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "3",] <- "EGFR/BAD low"
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "1",] <- "EGFR/BAD high"
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "4",] <- "AKT/HER2 high"
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "2",] <- "AKT/HER2 low"
-colnames(kmeans.4.clusters) <- "KMeans.Clusters"
-kmeans.4.clusters <- data.frame(kmeans.4.clusters$KMeans.Clusters, row.names = rownames(kmeans.4.clusters) )
-
-pathway_colors <- brewer.pal(5, "Set1")[c(1,2,3,5)]
-
-plot_drug_boxplots_final <- function(drugdata, clusters, selected, fillcolor){
-  colnames(clusters) <- "clusters"
-  merged <- merge(drugdata, clusters, by=0, all=T)
-  merged_melt <- melt(merged, id.vars = c("Row.names", "clusters"))
-  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
-  theplot <- ggplot(merged_melt_s, aes(factor(clusters), value)) +
-    geom_boxplot(outlier.shape = NA, fill=fillcolor) + 
-    theme_classic() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-    xlab("") +
-    ylab("-log(EC50)") +
-    geom_point(position=position_jitter(width = 0.1)) +
-    ggtitle(selected) 
-  return(theplot)
-}
-
-plota <- plot_drug_boxplots_final(drugs, kmeans.4.clusters, "GSK1059615", pathway_colors)
-plotb <- plot_drug_boxplots_final(drugs, kmeans.4.clusters, "Lapatinib", pathway_colors)
-plotc <- plot_drug_boxplots_final(drugs, kmeans.4.clusters, "AG1478", pathway_colors)
-plotd <- plot_drug_boxplots_final(drugs, kmeans.4.clusters, "Gefitinib", pathway_colors)
-
-#pdf("drug_response_boxplots.pdf", height=8)
-grid.arrange(plota,plotb,plotc,plotd, nrow=2,ncol=2)
-#dev.off()
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Read in the TCGA Datasets
 ```{r}
 
@@ -200,8 +114,6 @@ tcga_clusters=as.matrix(read.table(tcga_clusters, sep='\t', stringsAsFactors=FAL
 # ????? heatmap.2(as.matrix(single_pathway_best_tcga_nokras),col = my_palette,margins = c(9,9),dendrogram ="column", trace = "none",main = "",labRow = F)
 
 ```
-
-
 
 Perform Principle Components Analysis in ICBP
 ```{r}
