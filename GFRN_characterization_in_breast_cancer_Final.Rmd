@@ -7,7 +7,7 @@ date:     18April2016,update:20April2016, update:23May2016, update:6June16
 
 ---
 
-Load Dependencies
+Load the dependencies
 ```{r cache=TRUE}
 
 #Load required packages
@@ -37,7 +37,7 @@ col_breaks = c(seq(0,0.2,length=100), seq(0.2,0.4,length=100), seq(0.4,1,length=
 
 ```
 
-Specify Input Files (modify these locations for your system)
+Specify input files (modify these locations for your system)
 ```{r}
 
 signatures_dir <- "~/Documents/PhDProjects/Multipathway_Modeling/Data/"
@@ -46,9 +46,6 @@ signatures_dir <- "~/Documents/PhDProjects/Multipathway_Modeling/Data/"
 icbp_gene_expression<-paste(signatures_dir,"icbp_Rsubread_tpmlog.txt",sep="/")
 icbp_drug_response<-paste(signatures_dir,"ICBP_drugs.txt",sep="/")
 single_pathway_best_icbp_file<-paste(signatures_dir,"optimized_single_pathway_icbp.txt",sep="/")
-icbp_status_file <- paste(signatures_dir,"icbpstatus.txt",sep="/")
-icbp_intrinsic_file <- paste(signatures_dir,"intrinsic.txt",sep="/")
-icbp_clusters=as.matrix(read.table("~/Downloads/icbp.kmeans.txt", sep='\t', stringsAsFactors=FALSE, header=1, row.names=1))
 
 # TCGA files 
 tcga_brca_tumor_gene_expression<-paste(signatures_dir,"PANCAN24_BRCA_1119_TPMlog2.txt",sep="/")
@@ -58,7 +55,6 @@ tcga_clinical<-paste(signatures_dir,"GSE62944_06_01_15_TCGA_24_548_Clinical_Vari
 tcga_brca_pam50<-paste(signatures_dir,"BRCA.547.PAM50.SigClust.Subtypes.txt",sep="/")
 #downloaded from https://tcga-data.nci.nih.gov/docs/publications/brca_2012/BRCA.547.PAM50.SigClust.Subtypes.txt
 single_pathway_best_tcga_file<-paste(signatures_dir,"optimized_single_pathway_tcga.txt",sep="/")
-tcga_clusters<-paste(signatures_dir,"tcga.kmeans.txt",sep="/")
 
 ```
 
@@ -71,18 +67,9 @@ drugs<-read.delim(icbp_drug_response, header=1, sep='\t',row.names=1)
 # ICBP RNA-seq Data
 icbp<-as.matrix(read.table(icbp_gene_expression, sep='\t', stringsAsFactors=FALSE, header=1, row.names=1))
 
-# ICBP subtypes (IHC)
-icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
-
-#ICBP intrinsic subtypes 
-intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
-colnames(intrinsic) <- "Intrinsic.Subtype"
-rownames(intrinsic)[50] <- "T47D.Kbluc"
-
 # ICBP ASSIGN Predictions
 single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file,stringsAsFactors=FALSE, header=1, row.names=1,sep='\t')
 single_pathway_best_icbp_nokras=single_pathway_best_icbp[,-7]
-
 
 # independent drug response assay (bild lab)
 assay_ec50<-read.table("~/Documents/PhDProjects/Multipathway_Modeling/Data//Drug_response_assay.txt",header=1,row.names=1,sep='\t')
@@ -108,14 +95,9 @@ clinicals<-data.frame(fread(tcga_clinical), check.names=F,row.names=1)
 single_pathway_best_tcga <-read.table(single_pathway_best_tcga_file,stringsAsFactors=FALSE, header=1, row.names=1,sep='\t')
 single_pathway_best_tcga_nokras61=single_pathway_best_tcga[,-7]
 
-# TCGA cell line phenotypes from kmeans(4) clusters
-tcga_clusters=as.matrix(read.table(tcga_clusters, sep='\t', stringsAsFactors=FALSE, header=1, row.names=1))
-
-# ????? heatmap.2(as.matrix(single_pathway_best_tcga_nokras),col = my_palette,margins = c(9,9),dendrogram ="column", trace = "none",main = "",labRow = F)
-
 ```
 
-Perform Principle Components Analysis in ICBP
+Perform Principal Component Analysis in ICBP cell lines
 ```{r}
 
 # Remove genes with low variation (filtering)
@@ -127,7 +109,6 @@ print(dim(icbp_f))
 pca_mat_icbp <- prcomp(t(icbp_f), center=T,scale=T)
 rownames(pca_mat_icbp$x)[1:7]<-gsub("X","",rownames(pca_mat_icbp$x)[1:7])
 
-
 # Plot ICBP PCA Results
 plot(pca_mat_icbp,main="ICBP")
 
@@ -137,7 +118,7 @@ heatmap.2(as.matrix(icbp_pca_sig_cors[1:5,c(1,2,3,4,5,6,8)]),col=my_palette,marg
 
 ```
 
-Perform Principle Components Analysis in TCGA
+Perform Principal Component Analysis in TCGA BRCA
 ```{r}
 
 # Filter for low varying genes
@@ -149,33 +130,31 @@ dim(test_f) #21307
 pca_mat <- prcomp(t(test_f), center=T,scale=T)
 
 # Plot TCGA PCA results
- plot(pca_mat,main="PCA in TCGA BRCA")
+plot(pca_mat,main="PCA in TCGA BRCA")
 
 # Take the mean of all the gene expression values for all samples and correlate with the PCs 
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/PC1_avg_geneexp.pdf ")
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/PC1_avg_geneexp.pdf ")
 par(mfrow=c(1,1),lwd=4)
 plot(pca_mat$x[,1],(apply(test_f,2,mean)), main="Average expression vs PC1\n in TCGA samples", ylab = "Mean Gene Expression (RNA-Seq(TPMlog2)", xlab="PCA Values", )
 print(cor(pca_mat$x[,1],(apply(test_f,2,mean))), method= "spearman") # -0.823
-dev.off()
+#dev.off()
 
 ```
 
-Correlate TCGA Principle Components with ASSIGN generated GFRN pathway predictions
+Correlate TCGA Principal Components with ASSIGN generated GFRN pathway predictions
 ```{r}
 
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/TCGA_PCA_PC5_nokey.pdf ")
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/TCGA_PCA_PC5_nokey.pdf ")
 pca1_5=pca_mat$x[,1:5]
 pca_pathway_cors= cor(pca1_5, single_pathway_best_tcga_nokras61, method = "spearman")
 
 # Heatmap with signature/PC correlations 
 heatmap.2(as.matrix(pca_pathway_cors),col=my_palette,main="Cor between PCs 1-5 and signatures in TCGA  \n BRCA samples", trace = "none", key=T)
-# Without the Key
-heatmap.2(as.matrix(pca_pathway_cors),col=my_palette,main="Cor between PCs 1-5 and signatures in TCGA  \n BRCA samples", trace = "none", key=T)
-dev.off()
+#dev.off()
 
 ```
 
-Boxplot TCGA Principle Components across clinical subtypes (IHC: ER, PR, HER2)
+Boxplot TCGA Principal Components across clinical subtypes (IHC: ER, PR, HER2)
 ```{r}
 
 # prepare data
@@ -203,7 +182,7 @@ boxplot(er_pos$PC5,er_neg$PC5,pr_pos$PC5,pr_neg$PC5,her_pos$PC5,her_neg$PC5,top 
 
 ```
 
-Boxplot TCGA Principle Components across BRCA intrinsic subtypes (PAM50)
+Boxplot TCGA Principal Components across BRCA intrinsic subtypes (PAM50)
 ```{r}
 # PCA analysis of intrinstic subtypes in TCGA BRCA
 
@@ -235,10 +214,7 @@ fit <- aov(pam50_com_tcga$PC5 ~ pam50_com_tcga$PAM50); summary(fit)
 Plot GFRN pathway activity across breast cancer intrinsic subtypes (PAM50)
 ```{r}
 
-#TCGA_IHC=merge_drop(single_pathway_best_tcga, er_pr_her2_status)
-#heatmap.2(as.matrix(scale(single_pathway_best_tcga[,1:8],scale = T,center = T)),col = my_palette,margins = c(9,9),dendrogram ="column", trace = "none",main = "",labRow = F)
-
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Allpathwayf_SupFig4_noNs.pdf")
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Allpathwayf_SupFig4_noNs.pdf")
 subtypes_preds<-merge(single_pathway_best_tcga_nokras61,pam50_subset,by.x = 0,by.y = 0,all.x =T)
 
 # boxplots for GFRN activity across intrinistic subtypes
@@ -250,7 +226,7 @@ boxplot(subtypes_preds$HER2~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="HER2 Activ
 boxplot(subtypes_preds$IGF1R~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="IGF1R Activity",ylim=c(0,1),las=1)
 boxplot(subtypes_preds$KRASG12V~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="KRASG12VActivity",ylim=c(0,1),las=1)
 boxplot(subtypes_preds$RAF1~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="RAF1 Activity",ylim=c(0,1),las=1)
-dev.off()
+#dev.off()
 
 ```
 
@@ -276,32 +252,24 @@ boxplot(er_pos$KRASG12V,er_neg$KRASG12V,pr_pos$KRASG12V,pr_neg$KRASG12V,her_pos$
 boxplot(er_pos$RAF1,er_neg$RAF1,pr_pos$RAF1,pr_neg$RAF1,her_pos$RAF1,her_neg$RAF1, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association RAF1 Pathway", col=c(4,4,2,2,5,5), cex.axis=1.2)
 
 # boxplot her2+ vs her2 -
-boxplot2(her_pos$HER2,her_neg$HER2,col=c(2,4),ylab="HER2 Activity",ylim=c(0,1),las=1,names=c("HER2 +","HER2 -"))
+boxplot(her_pos$HER2,her_neg$HER2,ylab="HER2 Activity",ylim=c(0,1),las=1,names=c("HER2 +","HER2 -"))
 
 ```
 
-
 Apoptosis Figures
+Make Heatmap of breat cancer bell lines from western blot 
 ```{r}
 
-# heat map with cell lines used in the BH3 experiments 
-#pdf("~/Desktop/icbp_heatmaps.pdf")
-heatmap.2(as.matrix(scale(single_pathway_best_icbp[c("HCC1143","HCC1937","HCC1569","JIMT1","BT549","HCC38","MDAMB361","ZR7530","T47D","BT474","HCC1806","MCF7","HCC1419","HCC70"),]),scale=T,center=T),col=my_palette,trace="none",margins=c(7,7),main="",dendrogram = "column",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4","aquamarine4"))#,scale='row')#,Rowv=F,Colv=F)
-par(lend = 1)           # square line ends for the color legend
-legend("topright",legend = c("HER2/IGF1R/AKT phenotype","BAD/EGFR/KRAS/RAF1 phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 0.75)
-#dev.off()
-
-########Heatmap of selected cell lines used in Western Blot protein analysis
+#parse the cell lines
 selected_celllines<-c("AU565","BT474","BT483","BT549","CAMA1","HCC1143","HCC1419","HCC1428","HCC1806","HCC1937","HCC1954","HCC38","HCC70","HS578T","JIMT1","MCF7","MDAMB175","MDAMB231","T47D","ZR751")
-single_pathway_best_icbp_nokras
 scaled_selected<-single_pathway_best_icbp_nokras[selected_celllines,]
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis/heatmap_pathways_20_celllines_425_nokey.pdf")
+
+#make the heatmap
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis/heatmap_pathways_20_celllines_425_nokey.pdf")
 par(mfrow=c(1,1),lwd=3)
 heatmap.2(as.matrix(scale(single_pathway_best_icbp_nokras[selected_celllines,])),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), key.title="",scale="row", key=F)#,Rowv=F,Colv=F)
- #legend("topright",legend = c("HER2/IGF1R/AKT phenotype", "BAD/EGFR/KRAS/RAF phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 0.5)
-dev.off()
-
-
+legend("topright",legend = c("HER2/IGF1R/AKT phenotype", "BAD/EGFR/KRAS/RAF phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 0.5)
+#dev.off()
 
 ```
 
@@ -355,7 +323,7 @@ rownames(exp)[1:7]<-c("184A1","184B5","21MT1","21MT2","21NT","21PT","600MPE")
 exp_best<-merge_drop(single_pathway_best_icbp_nokras_scaled,exp)
 
 #boxplots for ICBP gene expression for phenotypes 
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis/ICBP_RNAseq_BoxPlots_BH3_newColors.pdf")
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis/ICBP_RNAseq_BoxPlots_BH3_newColors.pdf")
 par(mfrow = c(1,1), lwd=4)
 for (i in 9:ncol(exp_best)) {
   tmp = t.test(exp_best[,i] ~ exp_best[,8])
@@ -387,10 +355,9 @@ for(i in 1:nrow(single_pathway_best_tcga_scaled_nokras))
   }
 }
 
-#write table
+#write results to a file
 colnames(single_pathway_best_tcga_scaled_nokras)[8]="noKRAS"
 write.table(single_pathway_best_tcga_scaled_nokras,"~/Documents/PhDProjects/Multipathway_Modeling/Results/TCGA_phenotypes_NoKRASq.txt",sep='\t',quote=F, col.names = NA)
-View(single_pathway_best_tcga_scaled_nokras)
 
 ```
 
@@ -410,7 +377,7 @@ colnames(data_prot)<-toupper(colnames(data_prot))
 colnames(data_prot)<-gsub(pattern = "-",replacement = "",colnames(data_prot))
 
 # Boxblot the protein expression across phenotypes
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis/TCGA_phenotype_protein_rppa_NewColors.pdf")
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis/TCGA_phenotype_protein_rppa_NewColors.pdf")
 for(i in 1:length(prot_of_interest)){
   print(paste("analyzing",prot_of_interest[i]))
   if(prot_of_interest[i]%in%colnames(data_prot)){
@@ -421,7 +388,7 @@ for(i in 1:length(prot_of_interest)){
     axis(2,cex.axis=2)
   }
 }
-dev.off()
+#dev.off()
 
 ```
 
@@ -433,7 +400,7 @@ exp_tcga<-t(test[c("BAX","BAK1","BID","BCL2L11","BAD","BIK","PMAIP1","HRK","BBC3
 #exp_best<-merge_drop(single_pathway_best_tcga,exp_tcga)
 exp_best<-merge_drop(single_pathway_best_tcga_scaled_nokras,exp_tcga)
 
-pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis//TCGA_phenotype_gene_expression_NewColors.pdf")
+#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/Apoptosis//TCGA_phenotype_gene_expression_NewColors.pdf")
 # Boxplots for TCGA gene exprssion between phenotypes
 par(mfrow = c(1,1), lwd=4)
 for (i in 10:ncol(exp_best)) {
@@ -443,53 +410,23 @@ for (i in 10:ncol(exp_best)) {
   #boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\np-value =",tmp$p.value))
   }  
 }
+#dev.off()
 
-dev.off()
 ```
 
 Correlate ICBP GFRN pathway predictions with ICBP drug response and make Heatmap
 ```{r}
+
 # Merge the ICBP GFRN pathway predictions with the ICBP drug response
-pred_drug<-merge(single_pathway_best_icbp,drugs,by.x = 0,by.y = 0,all.x =T)
-rownames(pred_drug)<-pred_drug$Row.names
-pred_drug<-pred_drug[,2:ncol(pred_drug)]
-drugs_names=colnames(drugs)[11:100]
-
-#pdf("~/Desktop/subtypes_ICBP.pdf")
-
-# Capitolize the Subtypes in ICBP 
-drugs$Transcriptional.subtype=gsub("Basal.*","BASAL",drugs$Transcriptional.subtype)
-drugs$Transcriptional.subtype=gsub("Luminal.*","LUMINAL",drugs$Transcriptional.subtype)
-drugs$Transcriptional.subtype=gsub(".*ormal.*","NORMAL",drugs$Transcriptional.subtype)
-drugs$Transcriptional.subtype...ERBB2.status=gsub("ERBB2.*","ERBB2",drugs$Transcriptional.subtype...ERBB2.status)
-drugs$Transcriptional.subtype...ERBB2.status=gsub("Basal.*","BASAL",drugs$Transcriptional.subtype...ERBB2.status)
-drugs$Transcriptional.subtype...ERBB2.status=gsub("Luminal.*","LUMINAL",drugs$Transcriptional.subtype...ERBB2.status)
-drugs$Transcriptional.subtype...ERBB2.status=gsub(".*ormal.*","NORMAL",drugs$Transcriptional.subtype...ERBB2.status)
-drugs$Transcriptional.subtype=gsub("Basal.*","BASAL",drugs$Transcriptional.subtype)
-drugs$Transcriptional.subtype=gsub("Luminal.*","LUMINAL",drugs$Transcriptional.subtype)
-drugs$Transcriptional.subtype=gsub(".*ormal.*","NORMAL",drugs$Transcriptional.subtype)
 colnames(drugs)[1:15]<-gsub("X","",colnames(drugs)[1:15])
+pred_drug<-merge_drop(single_pathway_best_icbp_nokras_scaled,drugs,by.x = 0,by.y = 0,all.x =T)
 
-#only keeping the columns for the signautes. 
-basal<-subset(pred_drug,pred_drug$Transcriptional.subtype...ERBB2.status=="BASAL",select = c((colnames(pred_drug)%in%colnames(single_pathway_best_icbp))))
-her<-subset(pred_drug,pred_drug$Transcriptional.subtype...ERBB2.status=="ERBB2")
-her_basal<-subset(her,her$Transcriptional.subtype=="BASAL",select = c((colnames(her)%in%colnames(single_pathway_best_icbp))))
-her_lum<-subset(her,her$Transcriptional.subtype=="LUMINAL",select = c((colnames(her)%in%colnames(single_pathway_best_icbp))))#,select = c((colnames(her)%in%colnames(single_pathway_best))))
-claudin<-subset(pred_drug,pred_drug$Transcriptional.subtype...ERBB2.status=="Claudin-low",select = c((colnames(pred_drug)%in%colnames(single_pathway_best_icbp))))
-luminal<-subset(pred_drug,pred_drug$Transcriptional.subtype...ERBB2.status=="LUMINAL",select = c((colnames(pred_drug)%in%colnames(single_pathway_best_icbp))))
-norm<-subset(pred_drug,pred_drug$Transcriptional.subtype...ERBB2.status=="NORMAL",select = c((colnames(pred_drug)%in%colnames(single_pathway_best_icbp))))
-unk<-subset(pred_drug,is.na(pred_drug$Transcriptional.subtype...ERBB2.status),select = c((colnames(pred_drug)%in%colnames(single_pathway_best_icbp))))
-
-ordered<-rbind(basal,her_basal,her_lum,claudin,luminal,norm)
-ord_comb_drug<-pred_drug[rownames(ordered),]
-
-pdf("~/Dropbox/Multipathway_profiling_paper/drug_heatmap_nokras_2.pdf")
+#pdf("~/Dropbox/Multipathway_profiling_paper/drug_heatmap_nokras_2.pdf")
+cors_drugs=cor(pred_drug[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],pred_drug[, 1:7],method="spearman",use="pairwise")
 par(lwd=2)
-heatmap.2((cor(ord_comb_drug[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],ord_comb_drug[,c(1,2,3,4,5,6,8)],method="spearman",use="pairwise")), col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP:spearman: row scaling", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
-
+heatmap.2(cors_drugs, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP:spearman: row scaling", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
 legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","HER2/IGF1R/AKT phenotype","BAD/EGFR/KRAS/RAF phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
-
-dev.off()
+#dev.off()
 
 ```
 
@@ -498,14 +435,11 @@ Correlate GFRN pathway predictions with drug response in an independent drug ass
 
 # merge drug response data with GFRN pathway predictions
 assay_ec50_preds<-merge_drop(assay_ec50,single_pathway_best_icbp_nokras_scaled)
-View(assay_ec50_preds)
-class(assay_ec50_preds)
-colnames(assay_ec50_preds)
 
-pdf("~/Dropbox/Multipathway_profiling_paper/assay_heatmap.pdf")
+#pdf("~/Dropbox/Multipathway_profiling_paper/assay_heatmap.pdf")
 cors_spearman=cor(assay_ec50_preds[,c(1,2,3,4,5,7,8,9)], assay_ec50_preds[,c(10:15,16)],  method="spearman", use="pairwise")
 heatmap.2(cors_spearman,margins =c(10,10), col=my_palette, trace="none",main="spearman:row scale",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="row")
-dev.off()
+#dev.off()
 
 # boxplot and calulate p-values between the AKT and EGFR phenotype 
 for(i in 1:9) {
