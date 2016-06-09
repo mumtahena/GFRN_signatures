@@ -9,7 +9,6 @@ output: html_document
 library(ggplot2)
 library(gridExtra)
 library(reshape2)
-#install development version of ComplexHeatmap https://github.com/jokergoo/ComplexHeatmap
 library(RColorBrewer)
 
 #Input files (Modify These to Your System's Locations)
@@ -38,10 +37,10 @@ drugs <- drugs[rownames(single_pathway_best_icbp),c("GSK2141795","PF.4691502","E
 set.seed(123)
 kmeans.4 <- kmeans(scale(single_pathway_best_icbp)[,c(1,2,3,4)], 4, iter.max=100000, nstart = 100)
 kmeans.4.clusters <-data.frame(kmeans.4$cluster)
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "3",] <- "EGFR/BAD low"
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "1",] <- "EGFR/BAD high"
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "4",] <- "AKT/HER2 high"
-kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "2",] <- "AKT/HER2 low"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "3",] <- "Growth\nBAD low"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "1",] <- "Growth\nBAD high"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "4",] <- "Survival\nHER2 high"
+kmeans.4.clusters[kmeans.4.clusters$kmeans.4.cluster == "2",] <- "Survival\nHER2 low"
 colnames(kmeans.4.clusters) <- "KMeans.Clusters"
 kmeans.4.clusters <- data.frame(kmeans.4.clusters$KMeans.Clusters, row.names = rownames(kmeans.4.clusters) )
 
@@ -52,10 +51,14 @@ plot_drug_boxplots_final <- function(drugdata, clusters, selected, fillcolor){
   merged <- merge(drugdata, clusters, by=0, all=T)
   merged_melt <- melt(merged, id.vars = c("Row.names", "clusters"))
   merged_melt_s <- merged_melt[merged_melt$variable == selected,]
-  theplot <- ggplot(merged_melt_s, aes(factor(clusters), value)) +
+  theplot <- ggplot(merged_melt_s, aes(factor(clusters, 
+                                              levels = c("Survival\nHER2 high",
+                                                         "Survival\nHER2 low",
+                                                         "Growth\nBAD high",
+                                                         "Growth\nBAD low")), value)) +
     geom_boxplot(outlier.shape = NA, fill=fillcolor) + 
     theme_classic() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
           axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
           axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
     xlab("") +
