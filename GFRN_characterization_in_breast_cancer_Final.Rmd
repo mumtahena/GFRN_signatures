@@ -29,7 +29,7 @@ if (!require("mclust")) {
 }
 
 #souce key functions
-source('~/Documents/PhDProjects/GFRN_signatures/Key_ASSIGN_functions_balancedsig.R', echo=TRUE)
+source('Key_ASSIGN_functions_balancedsig.R', echo=TRUE)
 
 # set colors for heatmap
 my_palette <- colorRampPalette(c("darkblue","aliceblue","brown4"))(n = 299)
@@ -40,7 +40,7 @@ col_breaks = c(seq(0,0.2,length=100), seq(0.2,0.4,length=100), seq(0.4,1,length=
 Specify input files (modify these locations for your system)
 ```{r}
 
-signatures_dir <- "~/Documents/PhDProjects/Multipathway_Modeling/Data/"
+signatures_dir <- "Datasets"
 
 # ICBP files
 icbp_gene_expression<-paste(signatures_dir,"icbp_Rsubread_tpmlog.txt",sep="/")
@@ -69,10 +69,10 @@ icbp<-as.matrix(read.table(icbp_gene_expression, sep='\t', stringsAsFactors=FALS
 
 # ICBP ASSIGN Predictions
 single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file,stringsAsFactors=FALSE, header=1, row.names=1,sep='\t')
-single_pathway_best_icbp_nokras=single_pathway_best_icbp[,-7]
+
 
 # independent drug response assay (bild lab)
-assay_ec50<-read.table("~/Documents/PhDProjects/Multipathway_Modeling/Data//Drug_response_assay.txt",header=1,row.names=1,sep='\t')
+assay_ec50<-read.table(paste(signatures_dir,"Drug_response_assay.txt",sep="/"),header=1,row.names=1,sep='\t')
 
 ```
 
@@ -83,7 +83,7 @@ Read in the TCGA Datasets
 test<-data.frame(fread(tcga_brca_tumor_gene_expression), check.names=F,row.names=1)
 
 #TCGA RPPA Data
-prot_brca<-read.csv("~/Documents/PhDProjects/Multipathway_Modeling/Data//TCGA-BRCA-RBN.csv",header=1,check.names = F)
+prot_brca<-read.csv(paste(signatures_dir,"TCGA-BRCA-RBN.csv",sep="/"),header=1,check.names = F)
 
 # TCGA BRCA PAM50 (intrinsic subtypes)
 pam50<-read.table(tcga_brca_pam50,sep='\t', stringsAsFactors = T,header=T, row.names=1,check.names = F)
@@ -93,17 +93,13 @@ clinicals<-data.frame(fread(tcga_clinical), check.names=F,row.names=1)
 
 # TCGA BRCA ASSIGN generated pathway predictions (remove KRAS(Q61H))
 single_pathway_best_tcga <-read.table(single_pathway_best_tcga_file,stringsAsFactors=FALSE, header=1, row.names=1,sep='\t')
-single_pathway_best_tcga_nokras61=single_pathway_best_tcga[,-7]
-
 ```
 
 Perform Principal Component Analysis in ICBP cell lines
 ```{r}
 
 # Remove genes with low variation (filtering)
-print(dim(icbp))
 icbp_f <-icbp[apply(icbp[,1:55]==0,1,mean) < 0.85,]
-print(dim(icbp_f))
 
 # Perfrom PCA Analysis 
 pca_mat_icbp <- prcomp(t(icbp_f), center=T,scale=T)
