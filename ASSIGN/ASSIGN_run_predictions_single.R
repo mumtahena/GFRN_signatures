@@ -7,7 +7,7 @@
 #
 # Usage:   Rscript ASSIGN_run_predictions.R <pathway_number> <num_genes>
 #
-# Author:  David Jenkins (modified from ASSIGN scripts from Mumtahena Rahman)
+# Author:  David Jenkins and Mumtahena Rahman
 # Date:    2015-09-30
 #
 ################################################################################

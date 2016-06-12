@@ -1,4 +1,7 @@
 commit_git
 update_git
 Archive
-
+Datasets
+Datasets/*
+.gitignore
+.DS_Store
