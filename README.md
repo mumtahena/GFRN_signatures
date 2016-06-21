@@ -14,13 +14,18 @@ You will need the following datasets for running the `GFRN_characterization_in_b
 6. TCGA clinical dataset: [GSE62944_06_01_15_TCGA_24_548_Clinical_Variables_9264_Samples.txt.gz](http://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE62944&format=file&file=GSE62944%5F06%5F01%5F15%5FTCGA%5F24%5F548%5FClinical%5FVariables%5F9264%5FSamples%2Etxt%2Egz) 
 7. ICBP cell line single pathway optimized predictionL:optimized_single_pathway_icbp.txt (in Datasets directory)
 8. TCGA cell line single pathway optimized prediction: optimized_single_pathway_tcga.txt (in Datasets directory)
-9. Drug response assay 
+9. Drug response assay: Drug_response_assay.txt (in Datasets directory) 
+To download all the files click [here.](https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0)
 
 # Required R packages
 1. gplots
 2. RColorBrewer
 3. data.table
 4. mclust
+5. ggplot2
+6. gridExtra
+7. ComplexHeatmap
+8. Cluster
 
 # Other Required Files:
 `Key_ASSIGN_functions_balancedsig.R` - This file is available in this repository.
