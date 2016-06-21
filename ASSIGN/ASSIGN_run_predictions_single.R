@@ -141,38 +141,6 @@ if(run_pathway == 6){
                     S_zeroPrior=S_zeroPrior)
 }
 
-if(run_pathway == 7){
-  trainingLabel <- list(control=list(krasqh=1:9),krasqh=10:18)
-  sub_dir <- paste(basedir,paste("krasqh_",num_genes,"_gene_list", sep=""),sep='/')
-  dir.create(sub_dir)
-  assign_easy_multi_anchor_exclude(trainingData=cbind(c_kras_gfp,c_krasqh),
-                    test=c_test,
-                    trainingLabel1=trainingLabel,
-                    anchorGenes=list(krasqh=c("KRAS")),
-                    g=num_genes,
-                    out_dir_base=sub_dir,
-                    single=1,
-                    sigma_sZero = sigma_sZero,
-                    sigma_sNonZero = sigma_sNonZero,
-                    S_zeroPrior=S_zeroPrior)
-}
-
-if(run_pathway == 8){
-  trainingLabel <- list(control=list(kraswt=1:9),kraswt=10:18)
-  sub_dir <- paste(basedir,paste("kraswt_",num_genes,"_gene_list", sep=""),sep='/')
-  dir.create(sub_dir)
-  assign_easy_multi_anchor_exclude(trainingData=cbind(c_kras_gfp,c_kraswt),
-                    test=c_test,
-                    trainingLabel1=trainingLabel,
-                    anchorGenes=list(kraswt=c("KRAS")),
-                    g=num_genes,
-                    out_dir_base=sub_dir,
-                    single=1,
-                    sigma_sZero = sigma_sZero,
-                    sigma_sNonZero = sigma_sNonZero,
-                    S_zeroPrior=S_zeroPrior)
-}
-
 if(run_pathway == 9){
   trainingLabelr <- list(control=list(raf=1:12),raf=13:18)
   sub_dir <- paste(basedir,paste("raf_",num_genes,"_gene_list", sep=""),sep='/')

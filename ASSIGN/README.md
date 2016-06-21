@@ -64,9 +64,6 @@ Rscript ASSIGN_run_predictions_single.R 5 100
 # Run predictions for KRASGV, 175 genes
 Rscript ASSIGN_run_predictions_single.R 6 175
 
-# Run predictions for KRASQH, 300 genes
-Rscript ASSIGN_run_predictions_single.R 7 300
-
 # Run predictions for RAF, 350 genes
 Rscript ASSIGN_run_predictions_single.R 9 350
 ```
