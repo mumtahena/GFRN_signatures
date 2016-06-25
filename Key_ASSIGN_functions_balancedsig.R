@@ -1,5 +1,3 @@
-library(devtools)
-
 gatherFile<-function(baseDir){
   ###gathers all the prediction from baseDir/*/*/pathway_activity_testset* format
   setwd(baseDir)
@@ -38,16 +36,6 @@ gatherFile_multi<-function(baseDir){
     }
   }
   return(data)
-}
-
-resistant_or_sensitive=function(value,cutoff){
-  if(value>cutoff){
-    status='S'
-  }
-  else{
-    status='R'
-  }
-  return (status)
 }
 
 short_to_long_TCGA_id=function(longnames=NULL,shortnames=NULL){
@@ -228,17 +216,6 @@ testSig <- function(sigProtein, numGenes=NA, geneList =NULL, trainingData,
                     S_zeroPrior=S_zeroPrior)
 }
 
-getGeneList <- function(rDataPath){
-  load(rDataPath)
-  #for a gene list
-  output.data$processed.data$diffGeneList
-  #signature matrix with coefficients
-  output.data$processed.data$S_matrix
-}
-
-writeFile <- function(variable, filename){
-  write.table(variable, filename ,sep='\t', col.names=NA,quote=F)
-}
 
 testSig_multi <- function(sigProteins, numGenes=NA,geneList =NULL, trainingData,
                           testData, trainingLabel,sigma_sZero=0.01,
@@ -251,17 +228,4 @@ testSig_multi <- function(sigProteins, numGenes=NA,geneList =NULL, trainingData,
                     sigma_sNonZero=sigma_sNonZero, S_zeroPrior=S_zeroPrior,
                     p_beta=p_beta)
 }
-
-make_dicotomous_boxplots <- function(num_col, cat_col, title) {
-  pos <- num_col[cat_col == "Positive"]
-  neg <- num_col[cat_col == "Negative"]
-  t_test <- t.test(neg, pos)
-  boxplot2(
-    neg,
-    pos,
-    names = c("Negative", "Positive"),
-    main = paste(title, "\np-value=", round(t_test$p.value, digits = 5), sep =
-                   " ")
-  )
-  
 }
