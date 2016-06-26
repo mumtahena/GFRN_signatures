@@ -11,9 +11,9 @@ You will need the following datasets for running the `GFRN_characterization_in_b
 3. TCGA cancer tumor gene expression dataset: [GSM1536837_06_01_15_TCGA_24.tumor_Rsubread_TPM.txt.gz](http://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1536837&format=file&file=GSM1536837%5F06%5F01%5F15%5FTCGA%5F24%2Etumor%5FRsubread%5FTPM%2Etxt%2Egz)
 4. TCGA PAM50 classification of tumor samples: [BRCA.547.PAM50.SigClust.Subtypes.txt](https://tcga-data.nci.nih.gov/docs/publications/brca_2012/BRCA.547.PAM50.SigClust.Subtypes.txt)
 5. TCGA clinical dataset: [GSE62944_06_01_15_TCGA_24_548_Clinical_Variables_9264_Samples.txt.gz](http://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE62944&format=file&file=GSE62944%5F06%5F01%5F15%5FTCGA%5F24%5F548%5FClinical%5FVariables%5F9264%5FSamples%2Etxt%2Egz) 
-6. ICBP cell line single pathway optimized predictionL:optimized_single_pathway_icbp.txt (in Datasets directory)
-7. TCGA cell line single pathway optimized prediction: optimized_single_pathway_tcga.txt (in Datasets directory)
-8. Drug response assay: Drug_response_assay.txt (in Datasets directory) 
+6. ICBP cell line single pathway optimized predictionL:optimized_single_pathway_icbp.txt (in `Datasets` downloadable directory below)
+7. TCGA cell line single pathway optimized prediction: optimized_single_pathway_tcga.txt (in `Datasets` downloadable directory below)
+8. Drug response assay: Drug_response_assay.txt (in `Datasets` downloadable directory below) 
 
 To download all the required files click [here.](https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0)
 
