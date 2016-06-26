@@ -334,8 +334,8 @@ draw(ha_row_icbp2+h1+ha_row_icbp1, row_dend_side = "left", annotation_legend_sid
 ```
 
 # 3(A)-(C): Unsupervised variance analysis confirms the significance of the GFRN phenotypes
-##Perform Principal Component Analysis in ICBP cell lines
-```{r,cache=TRUE}
+###Perform Principal Component Analysis in ICBP cell lines
+```{r,cache=TRUE,echo=FALSE,include=FALSE}
 library(ggplot2)
 # Remove genes with low variation (filtering)
 icbp_f <-icbp[apply(icbp[,1:55]==0,1,mean) < 0.85,]
@@ -346,7 +346,8 @@ rownames(pca_mat_icbp$x)[1:7]<-gsub("X","",rownames(pca_mat_icbp$x)[1:7])
 
 # Plot ICBP PCA Results
 plot(pca_mat_icbp,main="ICBP")
-
+cum_icbp<-cumsum((pca_mat_icbp$sdev)^2) / sum(pca_mat_icbp$sdev^2) #calculates cumulative proportion of variances
+print(paste("Proportion of variance contributed by first 5 principal components in ICBP gene expression data:",cum_icbp[5]),sep=" ")#Proportion of variance contributed by first 5 principal component
 #correlate the PCAs with GFRN pathway predictions from ASSIGN
 icbp_pca_sig_cors=cor(pca_mat_icbp$x,single_pathway_best_icbp,method="spearman")
 heatmap.2(as.matrix(icbp_pca_sig_cors[1:5,1:7]),col=my_palette,margins = c(9,7), trace= "none", main="ICBP PC/Signature Cors")
@@ -357,13 +358,14 @@ heatmap.2(as.matrix(icbp_pca_sig_cors[1:5,1:7]),col=my_palette,margins = c(9,7),
 ```{r,echo=FALSE}
 
 # Filter for low varying genes
-dim(test) #23368
+#dim(test) #23368
 test_f<-test[apply(test[,1:ncol(test)]==0,1,mean) < 0.85,]
-dim(test_f) #21307
+#dim(test_f) #21307
 
 # Run PCA analysis in TCGA
 pca_mat <- prcomp(t(test_f), center=T,scale=T)
-
+cum_tcga<-cumsum((pca_mat$sdev)^2) / sum(pca_mat$sdev^2) #calculates cumulative proportiono of variances
+print(paste("Proportion of variance contributed by first 5 principal components in TCGA BRCA gene expression data:",cum_tcga[5]),sep=" ")#Proportion of variance contributed by first 5 principal components
 # Plot TCGA PCA results
 plot(pca_mat,main="PCA in TCGA BRCA")
 
@@ -399,9 +401,9 @@ boxplot(er_pos$PC5,er_neg$PC5,pr_pos$PC5,pr_neg$PC5,her_pos$PC5,her_neg$PC5,top 
 ```
 
 ##3(C) Correlate TCGA Principal Components with ASSIGN generated GFRN pathway predictions
-```{r,cache=TRUE}
+```{r,cache=TRUE,echo=FALSE}
 library(gplots)
-#pdf("~/Dropbox/Multipathway_profiling_paper/Figures/TCGA_PCA_PC5_nokey.pdf ")
+
 pca1_5=pca_mat$x[,1:5]
 pca_pathway_cors= cor(pca1_5, single_pathway_best_tcga, method = "spearman")
 
@@ -507,7 +509,7 @@ prot_brca$TCGA_patient_barcode<-short_to_long_TCGA_id(shortnames=gsub(pattern="\
 data_prot<-merge(single_pathway_best_tcga_scaled,prot_brca,by.x=0,by.y=1)
 
 # pull out apoptoic proteins
-prot_of_interest<-c("BAX","BAK1","BID","BIM","BAD","BIK","NOXA","HRK","PUMA","BMF","BCL2","BCLXL","BCLW","MCL1","BFL1")
+prot_of_interest<-c("BIM","BAD","MCL1")
 colnames(data_prot)<-toupper(colnames(data_prot))
 colnames(data_prot)<-gsub(pattern = "-",replacement = "",colnames(data_prot))
 
@@ -527,7 +529,7 @@ for(i in 1:length(prot_of_interest)){
 #Look for gene expression differences between apoptosis molecules in TCGA
 
 ###TCGA gene expression based phenotype analysis
-exp_tcga<-t(test[c("BAX","BAK1","BID","BCL2L11","BAD","BIK","PMAIP1","HRK","BBC3","BMF","BCL2","BCL2L1","BCL2L2","MCL1","BCL2A1"),])
+exp_tcga<-t(test[c("BCL2L11","BAD","MCL1"),])
 
 exp_best<-merge_drop(single_pathway_best_tcga_scaled,exp_tcga)
 
@@ -567,14 +569,9 @@ library(gplots)
 assay_ec50_preds<-merge_drop(assay_ec50,single_pathway_best_icbp_scaled)
 
 cors_spearman=cor(assay_ec50_preds[,c(1,2,3,4,5,7,8,9)], assay_ec50_preds[,c(10:16)],  method="spearman", use="pairwise")
-heatmap.2(cors_spearman,margins =c(10,10), col=my_palette, trace="none",main="spearman:row scale",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
+heatmap.2(cors_spearman,margins =c(10,10), col=my_palette, trace="none",main="",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
 
 
-# boxplot and calulate p-values between the Growth and survival phenotype 
-# for(i in 1:9) {
-# tmp = t.test(assay_ec50_preds[, i] ~ assay_ec50_preds$phenotype)
-# boxplot(assay_ec50_preds[, i] ~ assay_ec50_preds$phenotype, main = paste(colnames(assay_ec50_preds)[i],"response","\np-value:",round(tmp$p.value, digits = 5),sep =' '),ylab = "Sensitivity",col= c("coral3","aquamarine4"))
-#   }
 
 ```
 
