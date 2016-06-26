@@ -1,6 +1,6 @@
 # GFRN_signatures
 
-This repository presents all analyses done for the paper "Genomic signature networks identify unique growth phenotypes and predict drug response in breast cancer patients." `ASSIGN` folder describes pathway prediction generation in cell lines and in patient samples.`GFRN_characterization_in_breast_cancer_Final.Rmd`script has code for all the results described in the paper. 
+This repository presents all analyses done for the paper "Discrete growth and survival phenotypes link to apoptotic mechanism and drug response in breast cancer." `ASSIGN` folder describes pathway prediction generation in cell lines and in patient samples.`GFRN_characterization_in_breast_cancer_Final.Rmd`script has code for all the results described in the paper. 
 
 # Datasets
 
@@ -15,7 +15,7 @@ You will need the following datasets for running the `GFRN_characterization_in_b
 7. TCGA cell line single pathway optimized prediction: optimized_single_pathway_tcga.txt (in `Datasets` downloadable directory below)
 8. Drug response assay: Drug_response_assay.txt (in `Datasets` downloadable directory below) 
 
-To download all the required files click here [Datasets](https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0)
+To download all the required files click [Datasets](https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0).
 
 # Required R packages
 1. gplots
