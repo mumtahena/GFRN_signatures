@@ -14,6 +14,9 @@ You will need the following datasets for running the `GFRN_characterization_in_b
 6. ICBP cell line single pathway optimized predictionL:optimized_single_pathway_icbp.txt (in `Datasets` downloadable directory below)
 7. TCGA cell line single pathway optimized prediction: optimized_single_pathway_tcga.txt (in `Datasets` downloadable directory below)
 8. Drug response assay: Drug_response_assay.txt (in `Datasets` downloadable directory below) 
+9. Gene Expression Data for GFRN Signatures (AKT, BAD, HER2, IGF1R, and RAF): [GSE83083_GFP18_AKT_BAD_HER2_IGF1R_RAF_GFP30_KRAS-G12V_tpmlog.txt.gz] (http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?token=avanmkmqrnmrdwn&acc=GSE83083) 
+10. Gene Expression Data for GFRN Signatures (EGFR): [GSE59765_RAW.tar](http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?token=avanmkmqrnmrdwn&acc=+GSE59765)
+
 
 To download all the required files click [Datasets](https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0).
 
