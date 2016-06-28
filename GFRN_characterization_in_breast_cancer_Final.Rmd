@@ -393,11 +393,11 @@ her_neg<-com_tcga_er_pr_her2[com_tcga_er_pr_her2$her2_status_by_ihc=="Negative",
 
 # Make boxplots for TCGA PCs across IHC subtypes
 par(mfrow=c(1,1),lwd=2)
-boxplot(er_pos$PC1,er_neg$PC1,pr_pos$PC1,pr_neg$PC1,her_pos$PC1,her_neg$PC1, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC1", col="lightgrey", cex.axis=0.8)
-boxplot(er_pos$PC2,er_neg$PC2,pr_pos$PC2,pr_neg$PC2,her_pos$PC2,her_neg$PC2, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC2",col="lightgrey", cex.axis=1.6)
-boxplot(er_pos$PC3,er_neg$PC3,pr_pos$PC3,pr_neg$PC3,her_pos$PC3,her_neg$PC3,top = T, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC3", col="lightgrey", cex.axis=1.6)
-boxplot(er_pos$PC4,er_neg$PC4,pr_pos$PC4,pr_neg$PC4,her_pos$PC4,her_neg$PC4,top = T, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC4", col="lightgrey", cex.axis=1.6)
-boxplot(er_pos$PC5,er_neg$PC5,pr_pos$PC5,pr_neg$PC5,her_pos$PC5,her_neg$PC5,top = T, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC5", col="lightgrey", cex.axis=1.6)
+boxplot(er_pos$PC1,er_neg$PC1,pr_pos$PC1,pr_neg$PC1,her_pos$PC1,her_neg$PC1, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC1", col="lightgrey", cex.axis=1.6,ylab="PC1 values")
+boxplot(er_pos$PC2,er_neg$PC2,pr_pos$PC2,pr_neg$PC2,her_pos$PC2,her_neg$PC2, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC2",col="lightgrey", cex.axis=1.6,ylab="PC2 values")
+boxplot(er_pos$PC3,er_neg$PC3,pr_pos$PC3,pr_neg$PC3,her_pos$PC3,her_neg$PC3,top = T, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC3", col="lightgrey", cex.axis=1.6,ylab="PC3 values")
+boxplot(er_pos$PC4,er_neg$PC4,pr_pos$PC4,pr_neg$PC4,her_pos$PC4,her_neg$PC4,top = T, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC4", col="lightgrey", cex.axis=1.6,ylab="PC4 values")
+boxplot(er_pos$PC5,er_neg$PC5,pr_pos$PC5,pr_neg$PC5,her_pos$PC5,her_neg$PC5,top = T, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association with PC5", col="lightgrey", cex.axis=1.6,ylab="PC5 values")
 
 ```
 
@@ -613,17 +613,21 @@ rownames(pam50)<-short_to_long_TCGA_id(longnames = colnames(test),shortnames = g
 pam50_subset=subset(pam50, pam50$PAM50!="Normal")
 pam50_com_tcga<-merge_drop(pca_mat$x,pam50_subset)
 
-subtypes_preds<-merge(single_pathway_best_tcga,pam50_subset,by.x = 0,by.y = 0,all.x =T)
+subtypes_preds<-merge_drop(single_pathway_best_tcga,pam50_subset)
+basal<-subtypes_preds[subtypes_preds$PAM50=="Basal",]
+her2<-subtypes_preds[subtypes_preds$PAM50=="Her2",]
+lumA<-subtypes_preds[subtypes_preds$PAM50=="LumA",]
+lumB<-subtypes_preds[subtypes_preds$PAM50=="LumB",]
 
 # boxplots for GFRN activity across intrinistic subtypes
 par(mfrow=c(1,1),lwd=3)
-boxplot(subtypes_preds$AKT~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="AKT Activity",ylim=c(0,1),main="Intrinsic subtypes in association AKT Pathway")
-boxplot(subtypes_preds$BAD~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="BAD Activity",ylim=c(0,1),las=1,main="Intrinsic subtypes in association BAD Pathway")
-boxplot(subtypes_preds$EGFR~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="EGFR Activity",ylim=c(0,1),las=1,main="Intrinsic subtypes in association EGFR Pathway")
-boxplot(subtypes_preds$HER2~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="HER2 Activity",ylim=c(0,1),las=1,main="Intrinsic subtypes in association HER2 Pathway")
-boxplot(subtypes_preds$IGF1R~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="IGF1R Activity",ylim=c(0,1),las=1,main="Intrinsic subtypes in association IGF1R Pathway")
-boxplot(subtypes_preds$KRASG12V~subtypes_preds$PAM50,col=c(2,4,5,5),ylab="KRAS Activity",ylim=c(0,1),las=1,main="Intrinsic subtypes in association KRAS Pathway")
-boxplot(subtypes_preds$RAF1~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="RAF1 Activity",ylim=c(0,1),las=1,main="Intrinsic subtypes in association RAF1 Pathway")
+boxplot(basal$AKT,her2$AKT,lumA$AKT,lumB$AKT,col=c(2,4,5,5),ylab="AKT Activity",ylim=c(0,1),names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association AKT Pathway")
+boxplot(basal$BAD,her2$BAD,lumA$BAD,lumB$BAD,col=c(2,4,5,5),ylab="BAD Activity",ylim=c(0,1),names = c("Basal","Her2","LumA","LumB"),las=1,main="Intrinsic subtypes in association BAD Pathway")
+boxplot(basal$EGFR,her2$EGFR,lumA$EGFR,lumB$EGFR,col=c(2,4,5,5),ylab="EGFR Activity",ylim=c(0,1),las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association EGFR Pathway")
+boxplot(basal$HER2,her2$HER2,lumA$HER2,lumB$HER2,col=c(2,4,5,5),ylab="HER2 Activity",ylim=c(0,1),las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association HER2 Pathway")
+boxplot(basal$IGF1R,her2$IGF1R,lumA$IGF1R,lumB$IGF1R,col=c(2,4,5,5),ylab="IGF1R Activity",ylim=c(0,1),las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association IGF1R Pathway")
+boxplot(basal$KRAS,her2$KRAS,lumA$KRAS,lumB$KRAS,col=c(2,4,5,5),ylab="KRAS Activity",ylim=c(0,1),las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association KRAS Pathway")
+boxplot(basal$RAF1,her2$RAF1,lumA$RAF1,lumB$RAF1,col=c(2,4,5,5),ylab="RAF1 Activity",ylim=c(0,1),las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association RAF1 Pathway")
 
 
 ```
@@ -634,15 +638,15 @@ boxplot(subtypes_preds$RAF1~subtypes_preds$PAM50,col=c(2,4,5,5,6),ylab="RAF1 Act
 par(mfrow=c(1,1),lwd=4)
 ##Supplemental Figure 6(A) 
 plot(pca_mat$x[,1],(apply(test_f,2,mean)), main="Average expression vs PC1\n in TCGA samples", ylab = "Mean Gene Expression (RNA-Seq(TPMlog2)", xlab="PCA Values")
-print(cor(pca_mat$x[,1],(apply(test_f,2,mean))), method= "spearman") # -0.823
+print(paste("Spearman correlation of PC1 and mean gene expression of each sample: ",cor(pca_mat$x[,1],(apply(test_f,2,mean)), method= "spearman"),sep=" ")) # -0.823
 
 # PCA analysis of intrinstic subtypes in TCGA BRCA
 
 # boxplot for PCs in TCGA BRCA across subtypes
-boxplot(pam50_com_tcga$PC1~as.matrix(pam50_com_tcga$PAM50),main="PC1 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC5 values")
-boxplot(pam50_com_tcga$PC2~as.matrix(pam50_com_tcga$PAM50),main="PC2 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC5 values")
-boxplot(pam50_com_tcga$PC3~as.matrix(pam50_com_tcga$PAM50),main="PC3 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC5 values")
-boxplot(pam50_com_tcga$PC4~as.matrix(pam50_com_tcga$PAM50),main="PC4 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC5 values")
+boxplot(pam50_com_tcga$PC1~as.matrix(pam50_com_tcga$PAM50),main="PC1 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC1 values")
+boxplot(pam50_com_tcga$PC2~as.matrix(pam50_com_tcga$PAM50),main="PC2 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC2 values")
+boxplot(pam50_com_tcga$PC3~as.matrix(pam50_com_tcga$PAM50),main="PC3 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC3 values")
+boxplot(pam50_com_tcga$PC4~as.matrix(pam50_com_tcga$PAM50),main="PC4 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC4 values")
 boxplot(pam50_com_tcga$PC5~as.matrix(pam50_com_tcga$PAM50),main="PC5 across intrinsic subtypes",cex=0.8, col="lightgrey", cex.axis=1.1,ylab="PC5 values")
 
 
