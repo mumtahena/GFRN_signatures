@@ -3,10 +3,9 @@ title:    "Growth factor receptor network (GFRN) characterization in breast canc
 purpose:  Performs all analyses and generates figures for the Manuscript "Discrete breast cancer growth and               survival phenotypes influence apoptosis and drug response"
 name:     GRFN_characterization_in_brest_cancer_Final.Rmd
 authors:  Mumtahena Rahman, David Jenkins, Shelley MacNeil
-date:     18April2016,update:20April2016, update:23May2016, update:6June16, update:15June16
+date:     18April2016,update:20April2016, update:23May2016, update:6June16, update:15June16, update:30June16
 
 ---
-
 # 2(A)-(D): Analysis of pathway activity and intrinsic subtypes
 ##2(A): TCGA BRCA all pathway
 ```{r cache=TRUE,echo=FALSE}
@@ -336,7 +335,7 @@ draw(ha_row_icbp2+h1+ha_row_icbp1, row_dend_side = "left", annotation_legend_sid
 
 # 3(A)-(C): Unsupervised variance analysis confirms the significance of the GFRN phenotypes
 ###Perform Principal Component Analysis in ICBP cell lines
-```{r,cache=TRUE,echo=FALSE,include=FALSE}
+```{r,cache=TRUE,echo=FALSE}
 library(ggplot2)
 # Remove genes with low variation (filtering)
 icbp_f <-icbp[apply(icbp[,1:55]==0,1,mean) < 0.85,]
@@ -539,10 +538,8 @@ exp_best<-merge_drop(single_pathway_best_tcga_scaled,exp_tcga)
 par(mfrow = c(1,1), lwd=4)
 for (i in 9:ncol(exp_best)) {
   tmp = t.test(exp_best[,i] ~ exp_best[,8])
-  {
   boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value),col= c("coral3","aquamarine4"))
 
-  }  
 }
 
 ```
@@ -576,12 +573,65 @@ heatmap.2(cors_spearman,margins =c(10,10), col=my_palette, trace="none",main="",
 
 ```
 
-###Supplemental Figures 3(A)-(H): Pathway validations codes are in ./ASSIGN folder
-
-
-###Supplemental Figures 4(A)-(G): Boxplot GFRN pathway activity across breast cancer clinical subtypes (IHC)
+###Supplemental Figures 3(A)-(H): 
+Protein based pathway validations codes are in ./ASSIGN folder. Gene expression, mutation and IHC-based validations are shown here.
 ```{r,echo=FALSE,cache=TRUE}
-#merge subtypes with predictions
+#Gene expression based validation to check if predictions follow the main gene expression, ie, high prediction of a  pathway should have high expression of that pathway gene.
+
+create_high_low_expression <-
+  function(gene = NA,cutoff_percentile_high = 0.9,cutoff_percentile_low = 0.1)
+  {
+  exp <- test[gene,order(test[gene,])]
+  cutoff_high <-
+  quantile(t(test[gene,order(test[gene,])]),cutoff_percentile_high)
+  cutoff_low <-
+  quantile(t(test[gene,order(test[gene,])]),cutoff_percentile_low)
+  
+  gene_class <- NULL
+  for (i in 1:length(exp)) {
+  if (exp[i] >= cutoff_high)
+  {
+  gene_class[i] = "HIGH"
+  }
+  else if (exp[i] <= cutoff_low)
+  {
+  gene_class[i] = "LOW"
+  }
+  else if (cutoff_low<exp[i] & exp[i]<cutoff_high) 
+  {
+  gene_class[i] = "Intermediate"
+  }
+  }
+  exp_class <- as.data.frame(cbind(t(exp),(gene_class)))
+  rownames(exp_class) <- names(exp)
+  colnames(exp_class)[2] <- paste(gene,"class",sep = "_")
+  exp_class[,1] <- as.numeric(exp)
+  return(exp_class)
+  }
+akt_class<-create_high_low_expression(gene = "AKT1",cutoff_percentile_high = .9,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(akt_class,single_pathway_best_tcga)[,3]~merge_drop(akt_class,single_pathway_best_tcga)[,2],ylab="Estimated AKT activity")
+
+egfr_class<-create_high_low_expression(gene = "EGFR",cutoff_percentile_high = .9,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(egfr_class,single_pathway_best_tcga)[,5]~merge_drop(egfr_class,single_pathway_best_tcga)[,2],ylab="Estimated EGFR activity")
+
+her2_class<-create_high_low_expression(gene = "ERBB2",cutoff_percentile_high = .66,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(her2_class,single_pathway_best_tcga)[,6]~merge_drop(her2_class,single_pathway_best_tcga)[,2],ylab="Estimated HER2 activity")
+
+igf1r_class<-create_high_low_expression(gene = "IGF1R",cutoff_percentile_high = .8,cutoff_percentile_low = 0.2)
+boxplot2(merge_drop(igf1r_class,single_pathway_best_tcga)[,7]~merge_drop(igf1r_class,single_pathway_best_tcga)[,2],ylab="Estimated IGF1R activity")
+
+raf1_class<-create_high_low_expression(gene = "RAF1",cutoff_percentile_high = .9,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(raf1_class,single_pathway_best_tcga)[,9]~merge_drop(raf1_class,single_pathway_best_tcga)[,2],ylab="Estimated RAF1 activity")
+
+
+##########
+brca_mut<-t(read.table("Datasets/TCGA_PANCAN_mut.txt",header=1,row.names=1, sep='\t', check.names = F))
+rownames(brca_mut)<- short_to_long_TCGA_id(longnames = colnames(test),shortnames = rownames(brca_mut))
+pred_mut<- merge_drop(single_pathway_best_tcga,brca_mut)
+
+boxplot2(pred_mut$AKT~pred_mut$PIK3CA,ylab="AKT estimated pathway",names=c("PIK3CA WT","PIK3CA mutated"),main=paste("p-value:",round(t.test(pred_mut$AKT~pred_mut$PIK3CA)$p.value,digits = 3),sep=" "))
+boxplot2(pred_mut$BAD~pred_mut$PIK3CA,ylab="BAD estimated pathway",names=c("PIK3CA WT","PIK3CA mutated"),main=paste("p-value: ",t.test(pred_mut$BAD~pred_mut$PIK3CA)$p.value,sep=" "))
+
 subtypes_preds_ihc<-merge(single_pathway_best_tcga,er_pr_her2_status,by.x = 0,by.y = 0,all.x =T)
 
 # seperate into ER, PR, HER + and -
@@ -592,6 +642,14 @@ pr_neg<-subtypes_preds_ihc[subtypes_preds_ihc$pr_status_by_ihc=="Negative",]
 her_pos<-subtypes_preds_ihc[subtypes_preds_ihc$her2_status_by_ihc=="Positive",]
 her_neg<-subtypes_preds_ihc[subtypes_preds_ihc$her2_status_by_ihc=="Negative",]
 
+
+# boxplot her2+ vs her2 -
+boxplot2(her_pos$HER2,her_neg$HER2,ylab="HER2 Activity",ylim=c(0,1),las=1,names=c("HER2 +","HER2 -"),ylab="Estimated HER2 activity",main=paste("p-value: ",t.test(her_pos$HER2,her_neg$HER2)$p.value,sep=" "))
+```
+
+###Supplemental Figures 4(A)-(G): Boxplot GFRN pathway activity across breast cancer clinical subtypes (IHC)
+```{r,echo=FALSE,cache=TRUE}
+#merge subtypes with predictions
 boxplot(er_pos$AKT,er_neg$AKT,pr_pos$AKT,pr_neg$AKT,her_pos$AKT,her_neg$AKT, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association AKT Pathway", col=c(4,4,2,2,5,5), cex.axis=1.2,ylab="Estimated AKT pathway activity")
 boxplot(er_pos$BAD,er_neg$BAD,pr_pos$BAD,pr_neg$BAD,her_pos$BAD,her_neg$BAD, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association BAD Pathway", col=c(4,4,2,2,5,5), cex.axis=1.2,ylab="Estimated BAD pathway activity")
 boxplot(er_pos$HER2,er_neg$HER2,pr_pos$HER2,pr_neg$HER2,her_pos$HER2,her_neg$HER2, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association HER2 Pathway", col=c(4,4,2,2,5,5), cex.axis=1.2,ylab="Estimated HER2 pathway activity")
@@ -600,8 +658,7 @@ boxplot(er_pos$EGFR,er_neg$EGFR,pr_pos$EGFR,pr_neg$EGFR,her_pos$EGFR,her_neg$EGF
 boxplot(er_pos$KRASG12V,er_neg$KRASG12V,pr_pos$KRASG12V,pr_neg$KRASG12V,her_pos$KRASG12V,her_neg$KRASG12V, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association KRAS Pathway", col=c(4,4,2,2,5,5), cex.axis=1.2, ylab="Estimated KRAS pathway activity")
 boxplot(er_pos$RAF1,er_neg$RAF1,pr_pos$RAF1,pr_neg$RAF1,her_pos$RAF1,her_neg$RAF1, names=c("ER+","ER-","PR+","PR-","HER2+","HER2-"), main="ER/PR/HER2 status in association RAF1 Pathway", col=c(4,4,2,2,5,5), cex.axis=1.2,ylab="Estimated RAF1 pathway activity")
 
-# boxplot her2+ vs her2 -
-#boxplot(her_pos$HER2,her_neg$HER2,ylab="HER2 Activity",ylim=c(0,1),las=1,names=c("HER2 +","HER2 -"))
+
 
 ```
 
