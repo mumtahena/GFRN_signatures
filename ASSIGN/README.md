@@ -8,6 +8,12 @@ and [Mumtahena Rahman](mailto:mumtahena@gmail.com) with questions or issues.
 > Before running the scripts, you must modify the file input and output locations
 > in all scripts
 
+## Input files
+
+The same ASSIGN scripts can be used to analyze the 55 sample ICBP dataset and
+the 1119 sample TCGA BRCA dataset used in the paper. Modify the path to the
+```testFile``` parameter to the location of the file on your system.
+
 ## R Packages
 
 Before running the scripts, make sure the following R packages are installed:
@@ -83,12 +89,14 @@ Rscript icbp_prot_analysis.R
 Rscript tcga_prot_analysis.R
 ```
 
-
 ## Other Required Files:
 
 * ```Key_ASSIGN_functions_balancedsig.R``` - Internal R functions used by
 ```ASSIGN_merge_and_combat.R```,```ASSIGN_run_predictions_single.R``` and the correlation scripts. This file is available in this repository
 * ICBP breast cancer cell line drug response dataset: ```ICBP_drugs.txt``` for ```icbp_cor.R```
-* ICBP breast cancer cell line  RPPA data: ```proteomics.txt``` for ```icbp_prot_analysis.R```
+* ICBP breast cancer cell line log2(TPM) expression data: ```icbp_Rsubread_tpmlog.txt```
+* TCGA BRCA log2(TPM) expression data: ```PANCAN24_BRCA_1119_TPMlog2.txt```
+* ICBP breast cancer cell line RPPA data: ```proteomics.txt``` for ```icbp_prot_analysis.R```
 * TCGA breast cancer RPPA data: ```TCGA-BRCA-RBN.csv``` for ```tcga_prot_analysis.R```
+
 These files are available [here](https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0)
