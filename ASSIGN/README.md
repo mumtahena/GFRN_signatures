@@ -11,7 +11,7 @@ and [Mumtahena Rahman](mailto:mumtahena@gmail.com) with questions or issues.
 ## Input files
 
 The same ASSIGN scripts can be used to analyze the 55 sample ICBP dataset and
-the 1119 sample TCGA BRCA dataset used in the paper. Modify the path to the
+the 1119 sample TCGA BRCA dataset used in the paper. Modify the path for the
 ```testFile``` parameter to the location of the file on your system.
 
 ## R Packages
