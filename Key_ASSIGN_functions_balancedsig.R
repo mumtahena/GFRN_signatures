@@ -228,4 +228,4 @@ testSig_multi <- function(sigProteins, numGenes=NA,geneList =NULL, trainingData,
                     sigma_sNonZero=sigma_sNonZero, S_zeroPrior=S_zeroPrior,
                     p_beta=p_beta)
 }
-}
+
