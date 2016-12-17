@@ -1,0 +1,231 @@
+---
+title: "GFRN Paper Supplemental Table 2, Visual Representation"
+author: "David Jenkins"
+date: "Dec 9, 2016"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: "united"
+---
+
+## Supplemental Table 2a. Clinical and intrinsic subtype variation within each growth phenotypes in ICBP breast cancer cell lines
+
+| Subtypes | Num. in survival phenotype (N=27) | Percentage of total survival phenotype samples | Num. in growth phenotype (N=25) | Percentage of total growth phenotype samples |
+|-|-|-|-|-|
+| ER Positive | 15 | 55.555 | 2 | 8 |
+| ER Negative | 9 | 33.333 | 20 | 80 |
+| PR Positive | 7 | 25.925 | 0 | 0 |
+| PR Negative | 17 | 62.962 | 18 | 72 |
+| HER2 Positive | 12 | 44.444 | 3 | 12 |
+| HER2 Negative | 13 | 48.148 | 13 | 52 |
+| Luminal | 7 | 25.925 | 0 | 0 |
+| Basal-ERRB | 0 | 0 | 3 | 12 |
+| Basal | 1 | 3.704 | 4 | 16 |
+| Claudin-Low | 0 | 0 | 5 | 20 |
+
+## Visual Representation of Supplemental Table 2a - Horizontal Version
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(ComplexHeatmap)
+library(RColorBrewer)
+#Input File Paths:
+input_data_dir <- file.path("/home","david","Dropbox","bild_signatures",
+                           "david_results","final_pathway_predictions",
+                           "20161214_reanalysis")
+#the input should be scaled pathway prediction values, from AdditionalFile3
+single_pathway_best_icbp_file <- file.path(input_data_dir,
+                                   "optimized_single_pathway_icbp_scaled.txt")
+#the input should be scaled pathway prediction values, from AdditionalFile3
+single_pathway_best_tcga_file <- file.path(input_data_dir,
+                                   "optimized_single_pathway_tcga_scaled.txt")
+icbp_status_file <- file.path(input_data_dir,
+                              "icbpstatus_v2.txt")
+icbp_intrinsic_file <- file.path(input_data_dir,
+                                 "intrinsic.txt")
+tcga_status_rds_file <- file.path(input_data_dir,
+                                  "tcga_er_pr_her2_formatted.rds")
+tcga_intrinsic_file <- file.path(input_data_dir,
+                                 "TCGA_single_pathway_best_phenotype_intrinsic.txt")
+
+
+
+single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
+rownames(single_pathway_best_icbp)[50] <- "T47D.Kbluc"
+icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
+#Intrinsic Subtypes ICBP
+intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
+colnames(intrinsic) <- "Intrinsic.Subtype"
+rownames(intrinsic)[50] <- "T47D.Kbluc"
+intrinsic <- intrinsic[rownames(single_pathway_best_icbp),,drop=F]
+intrinsic <- cbind(icbp_status, intrinsic)
+
+intrinsic$Phenotype <- single_pathway_best_icbp$phenotype
+
+intrinsic_toorder <- intrinsic
+intrinsic_toorder$ER <- gsub("Unavailable", 'A',intrinsic_toorder$ER)
+intrinsic_toorder$PR <- gsub("Unavailable", 'A',intrinsic_toorder$PR)
+intrinsic_toorder$HER2 <- gsub("Unavailable", 'A',intrinsic_toorder$HER2)
+intrinsic_toorder$Intrinsic.Subtype <- gsub("Unavailable", 'A',intrinsic_toorder$Intrinsic.Subtype)
+
+ha = HeatmapAnnotation(df = intrinsic[order(intrinsic_toorder$Phenotype, intrinsic_toorder$ER, intrinsic_toorder$PR, intrinsic_toorder$HER2, intrinsic_toorder$Intrinsic.Subtype, decreasing = T),c(5,1,2,3,4)],
+                       col = list(PR = c("Positive" =  "#4DAF4A",
+                                                   "Negative" = "#984EA3",
+                                                   "Unavailable" = "grey"),
+                                       HER2 = c("Positive" =  "#FFFF33",
+                                                "Negative" = "#F781BF",
+                                                "Unavailable" = "grey"),
+                                       ER = c("Positive" =  "#E41A1C",
+                                              "Negative" = "#377EB8",
+                                              "Unavailable" = "grey"),
+                                       Intrinsic.Subtype = c("Basal" = '#e41a1c',
+                                                             "Claudin-low" = '#fccaa4',
+                                                             "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                             "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                             "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                             "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                             "Unavailable" = "grey"),
+                                  Phenotype=c("Survival Phenotype" =  "coral3", "Growth Phenotype" = "aquamarine4")))
+zero_row_mat = t(single_pathway_best_icbp[,1, drop=F])
+colnames(zero_row_mat) = NULL
+rownames(zero_row_mat) = NULL
+#pdf("icbp_suptable2.pdf", width=10)
+draw(Heatmap(zero_row_mat, top_annotation = ha, column_title = "ICBP Phenotypes vs. Subtypes", show_heatmap_legend = F,col = colorRampPalette(c("white","white","white"))(n = 299), cluster_columns = F), annotation_legend_side = "bottom")
+#dev.off()
+```
+
+
+## Visual Representation of Supplemental Table 2b - Vertical Version with Sample Names
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=10, eval=FALSE}
+ha2 = HeatmapAnnotation(df = intrinsic[order(intrinsic_toorder$Phenotype, intrinsic_toorder$ER, intrinsic_toorder$PR, intrinsic_toorder$HER2, intrinsic_toorder$Intrinsic.Subtype, decreasing = T),c(5,1,2,3,4)],
+                       col = list(PR = c("Positive" =  "#4DAF4A",
+                                                   "Negative" = "#984EA3",
+                                                   "Unavailable" = "grey"),
+                                       HER2 = c("Positive" =  "#FFFF33",
+                                                "Negative" = "#F781BF",
+                                                "Unavailable" = "grey"),
+                                       ER = c("Positive" =  "#E41A1C",
+                                              "Negative" = "#377EB8",
+                                              "Unavailable" = "grey"),
+                                       Intrinsic.Subtype = c("Basal" = '#e41a1c',
+                                                             "Claudin-low" = '#fccaa4',
+                                                             "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                             "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                             "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                             "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                             "Unavailable" = "grey"),
+                                  Phenotype=c("Survival Phenotype" =  "coral3", "Growth Phenotype" = "aquamarine4")), which="row", width = unit(2, "cm"), show_legend = FALSE)
+zero_row_mat2 = single_pathway_best_icbp[,1, drop=F]
+colnames(zero_row_mat2) = NULL
+rownames(zero_row_mat2) <- rownames(intrinsic[order(intrinsic_toorder$Phenotype, intrinsic_toorder$ER, intrinsic_toorder$PR, intrinsic_toorder$HER2, intrinsic_toorder$Intrinsic.Subtype, decreasing = T),c(5,1,2,3,4)])
+#rownames(zero_row_mat2) = NULL
+#draw(ha2, 1:nrow(zero_row_mat2))
+draw(ha2+Heatmap(zero_row_mat2, column_title = "ICBP Phenotypes vs. Subtypes", width = unit(1, "cm"), show_heatmap_legend = F,col = colorRampPalette(c("white","white","white"))(n = 299), cluster_rows = F), annotation_legend_side = "bottom")
+
+```
+
+## Supplemental Table 2b. Clinical and intrinsic subtype variation within each growth phenotypes in TCGA tumor data.
+
+| Subtypes | Num. in survival phenotype (N=597) | Percentage of total survival phenotype samples | Num. in growth phenotype (N=522) | Percentage of total growth phenotype samples | 
+|-|-|-|-|-|
+| ER Positive | 506 | 84.76 | 279 | 53.45 | 
+| ER Negative | 33 | 5.53 | 197 | 37.74 | 
+| PR Positive | 437 | 73.20 | 243 | 46.55 | 
+| PR Negative | 102 | 17.09 | 230 | 44.06 | 
+| HER2 Positive | 108 | 18.09 | 54 | 10.34 | 
+| HER2 Negative | 252 | 42.21 | 294 | 56.32 | 
+| LumA | 159 | 26.63 | 72 | 13.79 | 
+| LumB | 106 | 17.76 | 21 | 4.02 | 
+| Her2 | 41 | 6.87 | 16 | 3.07 | 
+| Basal | 2 | 0.34 | 93 | 17.82 | 
+| Normal | 2 | 0.34 | 5 | 0.96 | 
+
+## Visual Representation of Supplemental Table 2b - Horizontal Version
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+#input tcga pathway data
+single_pathway_best_tcga <-read.table(single_pathway_best_tcga_file, stringsAsFactors=FALSE,
+                                      header=1, row.names=1,sep='\t')
+
+#IHC Subtypes TCGA
+er_pr_her2_status2 <- readRDS(tcga_status_rds_file)
+
+#Intrinsic Subtypes TCGA
+tcgaintrinsic <- read.table(tcga_intrinsic_file, 
+                            row.names = 1, header=T, sep="\t")
+tcgaintrinsic <- tcgaintrinsic[rownames(single_pathway_best_tcga),12,drop=F]
+tcgaintrinsic$PAM50 <- as.character(tcgaintrinsic$PAM50)
+rownames(tcgaintrinsic) <- rownames(single_pathway_best_tcga)
+tcgaintrinsic$PAM50[is.na(tcgaintrinsic$PAM50)] <- "Unavailable"
+tcgaintrinsic <- cbind(er_pr_her2_status2, tcgaintrinsic)
+
+
+tcgaintrinsic$Phenotype <- single_pathway_best_tcga$phenotype
+
+tcgaintrinsic_toorder <- tcgaintrinsic
+tcgaintrinsic_toorder$ER.Status <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$ER.Status)
+tcgaintrinsic_toorder$PR.Status <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$PR.Status)
+tcgaintrinsic_toorder$HER2.Status <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$HER2.Status)
+tcgaintrinsic_toorder$PAM50 <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$PAM50)
+
+ha = HeatmapAnnotation(df = tcgaintrinsic[order(tcgaintrinsic_toorder$Phenotype, tcgaintrinsic_toorder$ER.Status, tcgaintrinsic_toorder$PR.Status, tcgaintrinsic_toorder$HER2.Status, tcgaintrinsic_toorder$PAM50, decreasing = T),c(5,1,2,3,4)],
+                       col = list(PR.Status = c("Positive" =  "#4DAF4A",
+                                                         "Negative" = "#984EA3",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           HER2.Status = c("Positive" =  "#FFFF33",
+                                                           "Negative" = "#F781BF",
+                                                           "Indeterminate" = "black",
+                                                           "Equivocal" = "skyblue",
+                                                           "Unavailable" = "grey"),
+                                           ER.Status = c("Positive" =  "#E41A1C",
+                                                         "Negative" = "#377EB8",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           PAM50 = c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                     "LumB" = '#fccaa4',
+                                                     "Her2" = brewer.pal(6, "Dark2")[4],
+                                                     "Basal" = '#e41a1c',
+                                                     "Normal" = brewer.pal(6, "Dark2")[6],
+                                                     "Unavailable"="grey"),
+                                  Phenotype=c("Survival Phenotype" =  "coral3", "Growth Phenotype" = "aquamarine4")))
+zero_row_mat = t(single_pathway_best_tcga[,1, drop=F])
+colnames(zero_row_mat) = NULL
+rownames(zero_row_mat) = NULL
+#pdf("tcga_suptable2.pdf", width=10)
+draw(Heatmap(zero_row_mat, top_annotation = ha, column_title = "TCGA Phenotypes vs. Subtypes", show_heatmap_legend = F,col = colorRampPalette(c("white","white","white"))(n = 299), cluster_columns = F), annotation_legend_side = "bottom")
+#dev.off()
+```
+
+## Visual Representation of Supplemental Table 2b - Vertical Version with Sample Names
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=8, fig.height=50, eval=FALSE}
+ha2 = HeatmapAnnotation(df = tcgaintrinsic[order(tcgaintrinsic_toorder$Phenotype, tcgaintrinsic_toorder$ER.Status, tcgaintrinsic_toorder$PR.Status, tcgaintrinsic_toorder$HER2.Status, tcgaintrinsic_toorder$PAM50, decreasing = T),c(5,1,2,3,4)],
+                       col = list(PR.Status = c("Positive" =  "#4DAF4A",
+                                                         "Negative" = "#984EA3",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           HER2.Status = c("Positive" =  "#FFFF33",
+                                                           "Negative" = "#F781BF",
+                                                           "Indeterminate" = "black",
+                                                           "Equivocal" = "skyblue",
+                                                           "Unavailable" = "grey"),
+                                           ER.Status = c("Positive" =  "#E41A1C",
+                                                         "Negative" = "#377EB8",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           PAM50 = c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                     "LumB" = '#fccaa4',
+                                                     "Her2" = brewer.pal(6, "Dark2")[4],
+                                                     "Basal" = '#e41a1c',
+                                                     "Normal" = brewer.pal(6, "Dark2")[6],
+                                                     "Unavailable"="grey"),
+                                  Phenotype=c("Survival Phenotype" =  "coral3", "Growth Phenotype" = "aquamarine4")), which="row", width = unit(2, "cm"), show_legend = FALSE)
+zero_row_mat2 = single_pathway_best_tcga[,1, drop=F]
+colnames(zero_row_mat2) = NULL
+rownames(zero_row_mat2) = rownames(tcgaintrinsic[order(tcgaintrinsic_toorder$Phenotype, tcgaintrinsic_toorder$ER.Status, tcgaintrinsic_toorder$PR.Status, tcgaintrinsic_toorder$HER2.Status, tcgaintrinsic_toorder$PAM50, decreasing = T),c(5,1,2,3,4)])
+#draw(ha2, 1:nrow(zero_row_mat2))
+draw(ha2+Heatmap(zero_row_mat2, column_title = "TCGA Phenotypes vs. Subtypes", width = unit(1, "cm"), row_names_gp = gpar(fontsize = 4), show_heatmap_legend = F,col = colorRampPalette(c("white","white","white"))(n = 299), cluster_rows = F), annotation_legend_side = "bottom")
+
+```
