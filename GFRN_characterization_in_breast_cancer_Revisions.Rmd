@@ -84,11 +84,6 @@ icbp_intrinsic_file   <- file.path("Datasets", "intrinsic.txt")
 tcga_status_rds_file  <- file.path("Datasets", "tcga_er_pr_her2_formatted.rds")
 tcga_intrinsic_file   <- file.path("Datasets", "TCGA_single_pathway_best_phenotype_intrinsic.txt")##Do we need this file? We could
 
-# # DELETE LATER THESE ARE SHELLEYS PATHS
-# icbp_status_file      <- paste(signatures_dir, "icbpstatus.txt", sep="/")
-# icbp_intrinsic_file   <- paste(signatures_dir, "intrinsic.txt", sep="/")
-# tcga_status_rds_file  <- paste(signatures_dir, "tcga_er_pr_her2_formatted.rds", sep="/")
-# tcga_intrinsic_file   <- paste(signatures_dir, "TCGA_single_pathway_best_phenotype_intrinsic.txt", sep="/")
 
 #input icbp pathway predictions
 single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
