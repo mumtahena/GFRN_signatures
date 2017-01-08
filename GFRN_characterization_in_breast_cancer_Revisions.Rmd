@@ -84,11 +84,16 @@ icbp_intrinsic_file   <- file.path("Datasets", "intrinsic.txt")
 tcga_status_rds_file  <- file.path("Datasets", "tcga_er_pr_her2_formatted.rds")
 tcga_intrinsic_file   <- file.path("Datasets", "TCGA_single_pathway_best_phenotype_intrinsic.txt")##Do we need this file? We could
 
+# Shelley Delete
+icbp_status_file      <- paste(signatures_dir, "icbpstatus_v2.txt", sep="/")
+icbp_intrinsic_file   <- paste(signatures_dir,  "intrinsic.txt", sep="/")
+tcga_status_rds_file  <- paste(signatures_dir,  "tcga_er_pr_her2_formatted.rds", sep="/")
+tcga_intrinsic_file   <-  paste(signatures_dir , "TCGA_single_pathway_best_phenotype_intrinsic.txt")##Do we need this file? We could
+
 
 #input icbp pathway predictions
 single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
 rownames(single_pathway_best_icbp)[50] <- "T47D.Kbluc"
-
 
 #input tcga pathway predictions
 single_pathway_best_tcga <-read.table(single_pathway_best_tcga_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
@@ -104,6 +109,7 @@ icbp<-as.matrix(read.table(icbp_gene_expression, sep='\t', stringsAsFactors=FALS
 
 #IHC Subtypes ICBP
 icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
+
 
 #Intrinsic Subtypes ICBP
 intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
@@ -476,8 +482,9 @@ scaled_selected<-single_pathway_best_icbp[selected_celllines,]
 
 #make the heatmap
 
+
 par(mfrow=c(1,1),lwd=3)
-heatmap.2(as.matrix(single_pathway_best_icbp[selected_celllines,c(1:7)]),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), key.title="",scale="row", key=F)#,Rowv=F,Colv=F)
+heatmap.2(as.matrix(single_pathway_best_icbp[selected_celllines,c(1:7)]),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), ,key.title="",scale="row", key=T)#,Rowv=F,Colv=F)
 legend("topright",legend = c("Survival phenotype", "Growth phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 8,cex = 0.5)
 
 
@@ -497,12 +504,20 @@ exp_best<-merge_drop(single_pathway_best_icbp[,1:8],exp)
 
 #boxplots for ICBP gene expression for phenotypes 
 
+#pdf("ICBP_apoptosis_boxplots_mRNA.pdf", width=6)
 par(mfrow = c(1,1), lwd=4)
 for (i in 9:ncol(exp_best)) {
+  print(i)
   tmp = t.test(exp_best[,i] ~ exp_best[,8])
-  boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value),col= c("coral3","aquamarine4"), ylab="log2 (Transcript per million)")
- 
+  boxplot(exp_best[,i] ~ exp_best[,8],
+          main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
 }
+#dev.off()
+
+
+colnames(prot_icbp)
+
+
 
 # #Call the phenotypes in TCGA
 # 
@@ -544,19 +559,21 @@ colnames(data_prot)<-gsub(pattern = "-",replacement = "",colnames(data_prot))
 
 # Boxblot the protein expression across phenotypes
 
+pdf("TCGA_apoptosis_boxplots_RPPA.pdf", width=6)
 for(i in 1:length(prot_of_interest)){
   print(paste("analyzing",prot_of_interest[i]))
   if(prot_of_interest[i]%in%colnames(data_prot)){
     print(paste(prot_of_interest[i],"data available"))
     tmp<-t.test(data_prot[,prot_of_interest[i]]~data_prot$PHENOTYPE)
     par(lwd=4)
-    boxplot(data_prot[,prot_of_interest[i]]~data_prot$PHENOTYPE,main=paste(prot_of_interest[i],"\np-value:",tmp$p.value,sep=' '), col= c("coral3","aquamarine4"),yaxt= 'n', ylab="RPPA Score")   
+    boxplot(data_prot[,prot_of_interest[i]]~data_prot$PHENOTYPE,main=paste(prot_of_interest[i],"\np-value:",tmp$p.value,sep=' '), col= c("aquamarine4", "coral3"),yaxt= 'n', ylab="RPPA Score")   
     axis(2,cex.axis=2)
   }
   else{
     print("Sorry!This protein is unavailable in TCGA RPPA dataset!")
   }
 }
+dev.off()
 
 #Look for gene expression differences between apoptosis molecules in TCGA
 
@@ -566,12 +583,14 @@ exp_tcga<-t(test[c("BCL2L11","BAD","MCL1"),])
 exp_best<-merge_drop(single_pathway_best_tcga,exp_tcga)
 
 
+pdf("TCGA_apoptosis_boxplots_mRNA.pdf", width=6)
 # Boxplots for TCGA gene exprssion between phenotypes
 par(mfrow = c(1,1), lwd=4)
 for (i in 10:ncol(exp_best)) {
   tmp = t.test(exp_best[,i] ~ exp_best[,8])
-  boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value),col= c("coral3","aquamarine4"))
+  boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value),col= c("aquamarine4", "coral3"))
 }
+dev.off()
 
 ```
 
