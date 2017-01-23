@@ -15,6 +15,7 @@ if (!require("gplots")) {
    install.packages("gplots", dependencies = TRUE)
    library(gplots)
    }
+
 if (!require("RColorBrewer")) {
    install.packages("RColorBrewer", dependencies = TRUE)
    library(RColorBrewer)
@@ -54,6 +55,8 @@ if (!require("cluster")) {
 }  
 #souce key functions
 source('Key_ASSIGN_functions_balancedsig.R', echo=FALSE)
+# SHELLLEY'S REMOVE
+source('~/Documents/PhDProjects/Multipathway_Modeling/GFRN_signatures/Key_ASSIGN_functions_balancedsig.R', echo=FALSE)
 
 # set colors for heatmap
 my_palette <- colorRampPalette(c("darkblue","aliceblue","brown4"))(n = 299)
@@ -62,6 +65,9 @@ col_breaks = c(seq(0,0.2,length=100), seq(0.2,0.4,length=100), seq(0.4,1,length=
 #Specify input files (modify these locations for your system)
 
 signatures_dir <- "Datasets"
+
+#shelley's delete
+signatures_dir <- "~/Documents/PhDProjects/Multipathway_Modeling/Data/"
 
 
 # ICBP files
@@ -98,7 +104,6 @@ rownames(single_pathway_best_icbp)[50] <- "T47D.Kbluc"
 #input tcga pathway predictions
 single_pathway_best_tcga <-read.table(single_pathway_best_tcga_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
 
-
 ##Read in the ICBP and TCGA datas
 
 # ICBP Drug Response Data
@@ -110,14 +115,12 @@ icbp<-as.matrix(read.table(icbp_gene_expression, sep='\t', stringsAsFactors=FALS
 #IHC Subtypes ICBP
 icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
 
-
 #Intrinsic Subtypes ICBP
 intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
 colnames(intrinsic) <- "Intrinsic.Subtype"
 rownames(intrinsic)[50] <- "T47D.Kbluc"
 intrinsic <- intrinsic[rownames(single_pathway_best_icbp),,drop=F]
 intrinsic <- cbind(icbp_status, intrinsic)
-
 
 # independent drug response assay (bild lab)
 assay_ec50<-read.table(paste(signatures_dir,"Drug_response_assay.txt",sep="/"),header=1,row.names=1,sep='\t')
@@ -163,6 +166,34 @@ tcgaintrinsic <- cbind(er_pr_her2_status2, tcgaintrinsic)
 er_pr_her2_status2 <- readRDS(tcga_status_rds_file)
 
 
+# #Call the phenotypes in TCGA (DO WE NEED THIS?)
+# 
+# 
+# # scale TCGA pathway predictions
+# single_pathway_best_tcga_scaled<- scale(single_pathway_best_tcga[,1:7],scale = T,center = T)
+# single_pathway_best_tcga_scaled=as.data.frame(single_pathway_best_tcga_scaled)
+# single_pathway_best_tcga_scaled$phenotype<-NA
+# 
+# # take the mean of the signature groups
+# growth_tcga<-apply(single_pathway_best_tcga_scaled[,c(1,4,5)],1,mean)
+# survival_tcga<-apply(single_pathway_best_tcga_scaled[,c(2,3,6,7)],1,mean)
+# 
+# for(i in 1:nrow(single_pathway_best_tcga_scaled))
+# { 
+#   if(growth_tcga[[i]] > survival_tcga[[i]]){
+#     single_pathway_best_tcga_scaled[i,8] <-"Growth Phenotype"
+#   }
+#   else{
+#     single_pathway_best_tcga_scaled[i,8] <- "Survival Phenotype"
+# 
+#   }
+# }
+# 
+
+```
+
+## 2(A): TCGA 
+```{r}
 ha_row_tcga2 = HeatmapAnnotation(df = tcgaintrinsic,
                                 col = list(PR.Status = c("Positive" =  "#4DAF4A",
                                                          "Negative" = "#984EA3",
@@ -194,6 +225,8 @@ h1 <- Heatmap(scale(single_pathway_best_tcga[,c(1:7)]), cluster_rows = T, cluste
 #pdf("tcga.pdf", width=6)
 draw(h1+ha_row_tcga2,row_dend_side = "left", annotation_legend_side = "bottom")
 #dev.off()
+
+
 ```
 
 ## 2(B): ICBP all pathways
@@ -343,7 +376,6 @@ draw(ha_row_icbp2+h1+ha_row_icbp1, row_dend_side = "left", annotation_legend_sid
 ```
 
 
-
 # 3(A)-(C): Unsupervised variance analysis confirms the significance of the GFRN phenotypes
 ###Perform Principal Component Analysis in ICBP cell lines
 ```{r,cache=TRUE,echo=FALSE}
@@ -472,8 +504,8 @@ heatmap.2(as.matrix(pca_pathway_cors),col=my_palette,trace="none",margins=c(7,7)
 legend("bottomleft",legend = c("Survival", "Growth"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 8,cex = .7,border = NULL)
 ```
 
-#4(A)-(E):Survival and growth phenotypes express dichotomous cell survival mechanism
-##4(A):Heatmap of breast cancer cell lines from Western Blot 
+#4(A)-(E):Survival and growth phenotypes express dichotomous cell survival mechanisms
+##4(A):Heatmap of breast cancer cell lines from Western Blots
 ```{r,echo=FALSE,cache=TRUE}
 
 #parse the cell lines
@@ -481,70 +513,45 @@ selected_celllines<-c("AU565","BT474","BT483","BT549","CAMA1","HCC1143","HCC1419
 scaled_selected<-single_pathway_best_icbp[selected_celllines,]
 
 #make the heatmap
-
-
 par(mfrow=c(1,1),lwd=3)
 heatmap.2(as.matrix(single_pathway_best_icbp[selected_celllines,c(1:7)]),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), ,key.title="",scale="row", key=T)#,Rowv=F,Colv=F)
 legend("topright",legend = c("Survival phenotype", "Growth phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 8,cex = 0.5)
 
-
+# Heat map will the cell lines from old and new western blot. DELETE
+#selected_celllines_both_assays<-c("AU565","BT474","BT483","BT549","CAMA1","HCC1143","HCC1419","HCC1428","HCC1806","HCC1937","HCC1954","HCC38","HCC70","HS578T","JIMT1","MCF7","MDAMB175","MDAMB231","T47D","ZR751", "HCC3153", "HCC1395", "21PT", "HCC2218", "HCC1569", "LY2", "MDAMB175", "MDAMB361", "SKBR3", "SUM53PE", "ZR75B", "ZR7530")
+#length(selected_celllines_both_assays) #32
+#scaled_selected_all<-single_pathway_best_icbp[selected_celllines_both_assays,]
+#make the heatmap, all
+#remove this
+#par(mfrow=c(1,1),lwd=3)
+#heatmap.2(as.matrix(single_pathway_best_icbp[,c(1:7)]),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), ,key.title="",scale="row", key=T)#,Rowv=F,Colv=F)
+#legend("topright",legend = c("Survival phenotype", "Growth phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 8,cex = 0.5)
 ```
 
 ##4(C)-(E): Gene and protein expression are significantly different between growth and survival phenotypes
 ```{r,echo=FALSE}
 
 # pull the genes we are intereted in (BH3 apoptosis genes)    
-exp<-as.data.frame(t(icbp[c("BAX","BCL2L11","BAD","BIK","PMAIP1","BBC3","BMF","BCL2","MCL1"),]))
+exp<-as.data.frame(t(icbp[c("BCL2L11","MCL1"),]))
+#exp<-as.data.frame(t(icbp[c("BAX","BCL2L11","BAD","BIK","PMAIP1","BBC3","BMF","BCL2","MCL1"),])) #DELETE
 
 #rename rownames 
 rownames(exp)[1:7]<-c("184A1","184B5","21MT1","21MT2","21NT","21PT","600MPE")
 
-# merge ICBP expression data with phenotypes 
+# merge ICBP expression data with phenotypes and subtypes
 exp_best<-merge_drop(single_pathway_best_icbp[,1:8],exp)
+exp_best_subtypes= merge_drop(exp_best, icbp_status)
 
-#boxplots for ICBP gene expression for phenotypes 
-
-#pdf("ICBP_apoptosis_boxplots_mRNA.pdf", width=6)
+# Boxplot MCL1 and BIM for the phenotypes (with the normals)
 par(mfrow = c(1,1), lwd=4)
 for (i in 9:ncol(exp_best)) {
   print(i)
   tmp = t.test(exp_best[,i] ~ exp_best[,8])
   boxplot(exp_best[,i] ~ exp_best[,8],
-          main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
+         main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
 }
-#dev.off()
-
-
-colnames(prot_icbp)
-
-
-
-# #Call the phenotypes in TCGA
-# 
-# 
-# # scale TCGA pathway predictions
-# single_pathway_best_tcga_scaled<- scale(single_pathway_best_tcga[,1:7],scale = T,center = T)
-# single_pathway_best_tcga_scaled=as.data.frame(single_pathway_best_tcga_scaled)
-# single_pathway_best_tcga_scaled$phenotype<-NA
-# 
-# # take the mean of the signature groups
-# growth_tcga<-apply(single_pathway_best_tcga_scaled[,c(1,4,5)],1,mean)
-# survival_tcga<-apply(single_pathway_best_tcga_scaled[,c(2,3,6,7)],1,mean)
-# 
-# for(i in 1:nrow(single_pathway_best_tcga_scaled))
-# { 
-#   if(growth_tcga[[i]] > survival_tcga[[i]]){
-#     single_pathway_best_tcga_scaled[i,8] <-"Growth Phenotype"
-#   }
-#   else{
-#     single_pathway_best_tcga_scaled[i,8] <- "Survival Phenotype"
-# 
-#   }
-# }
-# 
 
 #Look for protein (RPPA) expression differences between apoptosis molecules in TCGA
-
 # TCGA protein boxplots for phenotypes
 # make TCGA names long
 prot_brca$TCGA_patient_barcode<-short_to_long_TCGA_id(shortnames=gsub(pattern="\\.","-",as.character(prot_brca$TCGA_patient_barcode)),longnames=gsub(pattern="\\.","-",rownames(single_pathway_best_tcga)))
@@ -553,13 +560,14 @@ prot_brca$TCGA_patient_barcode<-short_to_long_TCGA_id(shortnames=gsub(pattern="\
 data_prot<-merge(single_pathway_best_tcga,prot_brca,by.x=0,by.y=1)
 
 # pull out apoptoic proteins
-prot_of_interest<-c("BIM","BAD","MCL1")
+#prot_of_interest<-c("BIM","BAD","MCL1")
+prot_of_interest<-c("BIM","MCL1")
 colnames(data_prot)<-toupper(colnames(data_prot))
 colnames(data_prot)<-gsub(pattern = "-",replacement = "",colnames(data_prot))
+data_prot_subtype<-merge(data_prot, er_pr_her2_status2, by.x=1,by.y=0)
 
 # Boxblot the protein expression across phenotypes
-
-pdf("TCGA_apoptosis_boxplots_RPPA.pdf", width=6)
+#pdf("TCGA_apoptosis_boxplots_RPPA.pdf", width=6)
 for(i in 1:length(prot_of_interest)){
   print(paste("analyzing",prot_of_interest[i]))
   if(prot_of_interest[i]%in%colnames(data_prot)){
@@ -573,25 +581,130 @@ for(i in 1:length(prot_of_interest)){
     print("Sorry!This protein is unavailable in TCGA RPPA dataset!")
   }
 }
-dev.off()
 
 #Look for gene expression differences between apoptosis molecules in TCGA
-
 ###TCGA gene expression based phenotype analysis
-exp_tcga<-t(test[c("BCL2L11","BAD","MCL1"),])
-
+#exp_tcga<-t(test[c("BCL2L11","BAD","MCL1"),])
+exp_tcga<-t(test_f[c("BCL2L11","MCL1"),])
 exp_best<-merge_drop(single_pathway_best_tcga,exp_tcga)
+tcga_exp_subtypes<-merge_drop(exp_best,er_pr_her2_status2 )
 
-
-pdf("TCGA_apoptosis_boxplots_mRNA.pdf", width=6)
 # Boxplots for TCGA gene exprssion between phenotypes
 par(mfrow = c(1,1), lwd=4)
 for (i in 10:ncol(exp_best)) {
   tmp = t.test(exp_best[,i] ~ exp_best[,8])
-  boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value),col= c("aquamarine4", "coral3"))
+  boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\nTCGA p-value* =",tmp$p.value),col= c("aquamarine4", "coral3"))
 }
-dev.off()
 
+#exp_best_subtypes_er_pos<-exp_best_subtypes[exp_best_subtypes$ER=="Positive",]
+#exp_best_subtypes_er_neg<-exp_best_subtypes[exp_best_subtypes$ER=="Negative",]
+#pdf("ICBP_apoptosis_boxplots_mRNA_ER.pdf", width=6)
+
+#er_vs_er_neg_mcl=t.test(exp_best_subtypes_er_pos$MCL1,exp_best_subtypes_er_neg$MCL1)
+#er_vs_er_neg_bim=t.test(exp_best_subtypes_er_pos$BCL2L11,exp_best_subtypes_er_neg$BCL2L11)
+
+# Boxplot MCL1 and BIM for ER status
+#boxplot(exp_best_subtypes_er_pos$MCL1, exp_best_subtypes_er_neg$MCL1, las=2, names=c("ER+","ER-"), col=c("coral3","aquamarine4", "#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste("\nphenotype p-value* =",er_vs_er_neg_mcl$p.value, "\nER p-value = ", er_vs_er_neg_bim$p.value))
+#boxplot(exp_best_subtypes_er_pos$BCL2L11, exp_best_subtypes_er_neg$BCL2L11, las=2, names=c("ER+","ER-"), col=c("coral3","aquamarine4", "#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste( "\nER p-value = ", er_vs_er_neg_bim$p.value))
+#dev.off()
+
+## WITHOUT the Normals. 
+# Same analysis without the normals
+#pdf("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/Apoptossis_Boxplots_ERstatus_noNormals_withBad.pdf", width=6)
+#exp_best_subtypes_rm_nrml=exp_best_subtypes[-1,]
+#exp_best_subtypes_rm_nrml=exp_best_subtypes_rm_nrml[-1,]
+#exp_best_subtypes_rm_nrml=exp_best_subtypes_rm_nrml[-32,]
+#exp_best_subtypes_rm_nrml=exp_best_subtypes_rm_nrml[-32,]
+#exp_best_subtypes_rm_nrml=exp_best_subtypes_rm_nrml[-32,]
+
+#mcl_icbp_t = t.test(exp_best_subtypes_rm_nrml$MCL1 ~ exp_best_subtypes_rm_nrml$phenotype)
+#bim_icbp_t = t.test(exp_best_subtypes_rm_nrml$BCL2L11 ~ exp_best_subtypes_rm_nrml$phenotype)
+#bad_icbp_t = t.test(exp_best_subtypes_rm_nrml$BAD.y ~ exp_best_subtypes_rm_nrml$phenotype)
+
+#par(lwd=4)
+#boxplot(exp_best_subtypes_rm_nrml$MCL1 ~ exp_best_subtypes_rm_nrml$phenotype, main = paste("\n ICBP MCL-1 p-value =", #mcl_icbp_t$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
+#boxplot(exp_best_subtypes_rm_nrml$BCL2L11 ~ exp_best_subtypes_rm_nrml$phenotype, main = paste("\n ICBP BIM p-value* =", #bim_icbp_t$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
+#boxplot(exp_best_subtypes_rm_nrml$BAD.y ~ exp_best_subtypes_rm_nrml$phenotype, main = paste("\n ICBP BAD p-value* =", #bad_icbp_t$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
+
+# Boxplots, normals only, seperate based on ER Status
+#exp_best_subtypes_er_pos_no_nrml<-exp_best_subtypes_rm_nrml[exp_best_subtypes_rm_nrml$ER=="Positive",]
+#exp_best_subtypes_er_neg_no_nrml<-exp_best_subtypes_rm_nrml[exp_best_subtypes_rm_nrml$ER=="Negative",]
+# t.test for MCL and BIM for ER status
+#er_vs_er_neg_mcl_nn=t.test(exp_best_subtypes_er_pos_no_nrml$MCL1,exp_best_subtypes_er_neg_no_nrml$MCL1)
+#er_vs_er_neg_bim_nn=t.test(exp_best_subtypes_er_pos_no_nrml$BCL2L11,exp_best_subtypes_er_neg_no_nrml$BCL2L11)
+#er_vs_er_neg_bad_nn=t.test(exp_best_subtypes_er_pos_no_nrml$BAD.y,exp_best_subtypes_er_neg_no_nrml$BAD.y)
+#par(lwd=4)
+#boxplot(exp_best_subtypes_er_pos_no_nrml$MCL1, exp_best_subtypes_er_neg_no_nrml$MCL1, las=2, names=c("ER+","ER-"), col=c( "#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste("\nICBP MCL-1 p-value* =",er_vs_er_neg_mcl_nn$p.value))
+#boxplot(exp_best_subtypes_er_pos_no_nrml$BCL2L11, exp_best_subtypes_er_neg_no_nrml$BCL2L11, las=2, names=c("ER+","ER-"), col=c("#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste( "\nICBP BIM p-value = ", er_vs_er_neg_bim_nn$p.value))
+#boxplot(exp_best_subtypes_er_pos_no_nrml$BAD.y, exp_best_subtypes_er_neg_no_nrml$BAD.y, las=2, names=c("ER+","ER-"), col=c("#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste( "\nICBP BAD p-value = ", er_vs_er_neg_bad_nn$p.value))
+
+#exp_best_subtypes_growth<-exp_best_subtypes[exp_best_subtypes$phenotype=="Growth Phenotype",]
+#exp_best_subtypes_survival<-exp_best_subtypes[exp_best_subtypes$phenotype=="Survival Phenotype",]
+
+#MCL1
+#par(mfrow = c(1,1), lwd=4)
+#boxplot(exp_best_subtypes_survival$MCL1, exp_best_subtypes_growth$MCL1, exp_best_subtypes_er_pos$MCL1, exp_best_subtypes_er_neg$MCL1,las=2, names=c("Survival","Growth", "ER+","ER-"), col=c("coral3","aquamarine4", "#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste("\nphenotype p-value* =",s_vs_g_mcl$p.value, "\nER p-value = ", er_vs_er_neg_mcl$p.value))
+#BIM
+#s_vs_g_bim = t.test(exp_best_subtypes_survival$BCL2L11,exp_best_subtypes_growth$BCL2L11)
+#er_vs_er_neg_bim=t.test(exp_best_subtypes_growth_er_pos$BCL2L11,exp_best_subtypes_growth_er_pos$BCL2L11)
+#par(mfrow = c(1,1), lwd=4)
+#boxplot(exp_best_subtypes_survival$BCL2L11, exp_best_subtypes_growth$BCL2L11, exp_best_subtypes_er_pos$BCL2L11, exp_best_subtypes_er_neg$BCL2L11,las=2, names=c("Survival","Growth", "ER+","ER-"), col=c("coral3","aquamarine4", "#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste("\nphenotype p-value* =",s_vs_g_bim$p.value, "\nER p-value = ", er_vs_er_neg_bim$p.value))
+
+# ER status only ICBP gene expression
+#par(mfrow = c(1,1), lwd=4)
+#boxplot(exp_best_subtypes_er_pos$MCL1, exp_best_subtypes_er_neg$MCL1, exp_best_subtypes_er_pos$BCL2L11, exp_best_subtypes_er_neg$BCL2L11, las=2, names=c("ER+","ER-", "ER+","ER-"), col=c("coral3","aquamarine4", "#E41A1C","#377EB8"), ylab="log2 (Transcript per million)", main = paste("\nphenotype p-value* =",er_vs_er_neg_mcl$p.value, "\nER p-value = ", er_vs_er_neg_bim$p.value))
+
+# RRPA seperate on ER status
+#rppa_er_pos<-data_prot_subtype[data_prot_subtype$ER.Status=="Positive",]
+#rppa_er_neg<-data_prot_subtype[data_prot_subtype$ER.Status=="Negative",]
+#rppa_bim<-t.test(rppa_er_pos$BIM, rppa_er_neg$BIM)
+#rppa_bad<-t.test(rppa_er_pos$BAD, rppa_er_neg$BAD)
+#par(lwd=4)
+#boxplot(rppa_er_pos$BIM,rppa_er_neg$BIM, main=paste("\nBIMp-value:",rppa_bim$p.value,sep=' '), col= c("#E41A1C","#377EB8"),yaxt= 'n', #ylab="RPPA Score", names=c("ER+","ER-"))  
+#boxplot(rppa_er_pos$BIM,rppa_er_neg$BAD, main=paste("\nBAD p-value:",rppa_bad$p.value,sep=' '), col= c("#E41A1C","#377EB8"),yaxt= 'n', ylab="RPPA Score", names=c("ER+","ER-"))   
+
+# TCGA gene expression: seperate on ER status
+#tcga_exp_er_pos<-tcga_exp_subtypes[tcga_exp_subtypes$ER.Status=="Positive",]
+#dim(tcga_exp_er_pos)
+#tcga_exp_er_neg<-tcga_exp_subtypes[tcga_exp_subtypes$ER.Status=="Negative",]
+#dim(tcga_exp_er_neg)
+#tcga_exp_bim<-t.test(tcga_exp_er_pos$BCL2L11, tcga_exp_er_neg$BCL2L11)
+#tcga_exp_mcl<-t.test(tcga_exp_er_pos$MCL1, tcga_exp_er_neg$MCL1)
+#tcga_exp_bad<-t.test(tcga_exp_er_pos$BAD.y, tcga_exp_er_neg$BAD.y)
+#par(lwd=4)
+#boxplot(tcga_exp_er_pos$BCL2L1,tcga_exp_er_neg$BCL2L11, main=paste("TCGA BIM p-value:",tcga_exp_bim$p.value,sep=' '), col= c("#E41A1C","#377EB8"),yaxt= 'n', ylab="RPPA Score", names=c("ER+","ER-"))   
+#boxplot(tcga_exp_er_pos$MCL1, tcga_exp_er_neg$MCL1, main=paste("TCGA MCL-1 p-value:",tcga_exp_bim$p.value,sep=' '), col= c("#E41A1C","#377EB8"),yaxt= 'n', ylab="RPPA Score", names=c("ER+","ER-"))   
+#boxplot(tcga_exp_er_pos$BAD.y, tcga_exp_er_neg$BAD.y, main=paste("TCGA BAD p-value:",tcga_exp_bad$p.value,sep=' '), col= c("#E41A1C","#377EB8"),yaxt= 'n', ylab="RPPA Score", names=c("ER+","ER-"))  
+#dev.off()
+
+# western blot quantification
+#New_Westerns_Quantifications <- read.delim("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/New_Westerns_Quantifications.txt", row.names=1)
+#Old_Westerns_Quantifications <- read.delim("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/Old_Westerns_Quantifications.txt", row.names=1)
+
+#mcl_new=t.test(New_Westerns_Quantifications$MCL1_new_norm ~ New_Westerns_Quantifications$phenotype)
+#mcl_old=t.test(Old_Westerns_Quantifications$mcl_old_norm~ Old_Westerns_Quantifications$phenotype)
+#bim_new=t.test(New_Westerns_Quantifications$BIM_new_norm ~ New_Westerns_Quantifications$phenotype)
+#bim_old=t.test(Old_Westerns_Quantifications$bim_old_norm~ Old_Westerns_Quantifications$phenotype)
+#bad_new=t.test(New_Westerns_Quantifications$BAD_new_norm ~ New_Westerns_Quantifications$phenotype)
+#bad_old=t.test(Old_Westerns_Quantifications$bad_old_norm~ Old_Westerns_Quantifications$phenotype)
+#
+#pdf("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/Westernblot_quantification_boxplots.pdf", width=10)
+#par(lwd=4, mfrow = c(1, 2))
+# MCL1 new
+#boxplot(New_Westerns_Quantifications$MCL1_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n MCL1 (new blot)", "\n", "p-value* =", round(mcl_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+# MCL1 old
+#boxplot(Old_Westerns_Quantifications$mcl_old_norm ~ Old_Westerns_Quantifications$phenotype,  main = paste("\n MCL-1 (old blot)", "\n", "p-value* =", round(mcl_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+#Bim new
+#par(lwd=4, mfrow = c(1, 2))
+#boxplot(New_Westerns_Quantifications$BIM_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n BIM (new blot)", "\n", "p-value* =", round(bim_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+#Bim old
+#boxplot(Old_Westerns_Quantifications$bim_old_norm ~ Old_Westerns_Quantifications$phenotype,  main = paste("\n BIM (old blot)", "\n", "p-value* =", round(bim_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density)")
+#bad new
+#par(lwd=4, mfrow = c(1, 2))
+#boxplot(New_Westerns_Quantifications$BAD_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n BAD (new blot)", "\n", "p-value* =", round(bad_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+#Bim old
+#boxplot(Old_Westerns_Quantifications$bad_old_norm~ Old_Westerns_Quantifications$phenotype,  main = paste("\n BAD (old blot)", "\n", "p-value* =", round(bad_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+#dev.off()
 ```
 
 # 5(A) &(B): Growth factor network phenotypes reflect dichotomous drug response in breast cancer cell lines
