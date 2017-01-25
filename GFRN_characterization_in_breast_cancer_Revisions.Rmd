@@ -55,6 +55,7 @@ if (!require("cluster")) {
 }  
 #souce key functions
 source('Key_ASSIGN_functions_balancedsig.R', echo=FALSE)
+
 # SHELLLEY'S REMOVE
 source('~/Documents/PhDProjects/Multipathway_Modeling/GFRN_signatures/Key_ASSIGN_functions_balancedsig.R', echo=FALSE)
 
@@ -76,6 +77,7 @@ icbp_drug_response<-paste(signatures_dir,"ICBP_drugs.txt",sep="/")
 single_pathway_best_icbp_file<-paste(signatures_dir,"optimized_single_pathway_icbp_scaled.txt",sep="/")
 
 # TCGA files 
+
 tcga_brca_tumor_gene_expression<-paste(signatures_dir,"PANCAN24_BRCA_1119_TPMlog2.txt",sep="/")
 # downloaded from http://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1536837&format=file&file=GSM1536837%5F06%5F01%5F15%5FTCGA%5F24%2Etumor%5FRsubread%5FTPM%2Etxt%2Egz and filtered for only BRCA tumor samples
 tcga_clinical<-paste(signatures_dir,"GSE62944_06_01_15_TCGA_24_548_Clinical_Variables_9264_Samples.txt",sep="/")
@@ -534,7 +536,6 @@ legend("topright",legend = c("Survival phenotype", "Growth phenotype"), col = c(
 # pull the genes we are intereted in (BH3 apoptosis genes)    
 exp<-as.data.frame(t(icbp[c("BCL2L11","MCL1"),]))
 #exp<-as.data.frame(t(icbp[c("BAX","BCL2L11","BAD","BIK","PMAIP1","BBC3","BMF","BCL2","MCL1"),])) #DELETE
-
 #rename rownames 
 rownames(exp)[1:7]<-c("184A1","184B5","21MT1","21MT2","21NT","21PT","600MPE")
 
@@ -712,6 +713,7 @@ for (i in 10:ncol(exp_best)) {
 ```{r, echo=FALSE,cache=TRUE}
 library(gplots)
 # Merge the ICBP GFRN pathway predictions with the ICBP drug response
+
 colnames(drugs)[1:15]<-gsub("X","",colnames(drugs)[1:15])
 pred_drug<-merge_drop(single_pathway_best_icbp,drugs,by.x = 0,by.y = 0,all.x =T)
 
@@ -719,6 +721,28 @@ cors_drugs=cor(pred_drug[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Do
 par(lwd=2)
 heatmap.2(cors_drugs, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP:spearman: row scaling", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
 legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+
+#seperate ER status
+
+pred_drug_subtype=merge_drop(pred_drug,icbp_status)
+colnames(pred_drug_subtype)
+icbp_drug_er_pos=pred_drug_subtype[pred_drug_subtype$ER=="Positive",]
+
+icbp_drug_er_neg=pred_drug_subtype[pred_drug_subtype$ER=="Negative",]
+
+cors_drugs_er_pos=cor(icbp_drug_er_pos[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_er_pos[, 1:7],method="spearman",use="pairwise")
+
+cors_drugs_er_neg=cor(icbp_drug_er_neg[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_er_neg[, 1:7],method="spearman",use="pairwise")
+
+#ER Pos
+pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_ERSeperated.pdf", width=6)
+heatmap.2(cors_drugs_er_pos, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP (ER+ Only)",, RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+#ER neg
+heatmap.2(cors_drugs_er_neg, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP(ER- Only)", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+
+
 
 
 ```
@@ -732,7 +756,21 @@ assay_ec50_preds<-merge_drop(assay_ec50,single_pathway_best_icbp)
 cors_spearman=cor(assay_ec50_preds[,c(1,2,3,4,5,7,8,9)], assay_ec50_preds[,c(10:16)],  method="spearman", use="pairwise")
 heatmap.2(cors_spearman,margins =c(10,10), col=my_palette, trace="none",main="",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
 
+assay_ec50_preds_subtype<-merge_drop(assay_ec50_preds, icbp_status)
+assay_ec50_preds_subtype=assay_ec50_preds_subtype[,-21]
+colnames(assay_ec50_preds_subtype)[13]="HER2"
+indep_drug_er_pos=assay_ec50_preds_subtype[assay_ec50_preds_subtype$ER=="Positive",]
+indep_drug_er_neg=assay_ec50_preds_subtype[assay_ec50_preds_subtype$ER=="Negative",]
 
+cors_spearman_pos=cor(indep_drug_er_pos[,c(1,2,3,4,5,7,8,9)], indep_drug_er_pos[,c(10:16)],  method="spearman", use="pairwise")
+cors_spearman_neg=cor(indep_drug_er_neg[,c(1,2,3,4,5,7,8,9)], indep_drug_er_neg[,c(10:16)],  method="spearman", use="pairwise")
+
+
+heatmap.2(cors_spearman_pos, col=my_palette, trace="none",main="Independent Assay(ER+)",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
+
+heatmap.2(cors_spearman_neg, col=my_palette, trace="none",main="Independent Assay(ER-)",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
+
+dev.off()
 
 ```
 
