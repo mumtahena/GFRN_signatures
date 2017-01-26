@@ -679,27 +679,28 @@ for (i in 10:ncol(exp_best)) {
 #dev.off()
 
 # western blot quantification
-#New_Westerns_Quantifications <- read.delim("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/New_Westerns_Quantifications.txt", row.names=1)
-#Old_Westerns_Quantifications <- read.delim("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/Old_Westerns_Quantifications.txt", row.names=1)
+New_Westerns_Quantifications <- read.delim("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/New_Westerns_Quantifications.txt", row.names=1)
+Old_Westerns_Quantifications <- read.delim("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/Old_Westerns_Quantifications.txt", row.names=1)
 
-#mcl_new=t.test(New_Westerns_Quantifications$MCL1_new_norm ~ New_Westerns_Quantifications$phenotype)
-#mcl_old=t.test(Old_Westerns_Quantifications$mcl_old_norm~ Old_Westerns_Quantifications$phenotype)
-#bim_new=t.test(New_Westerns_Quantifications$BIM_new_norm ~ New_Westerns_Quantifications$phenotype)
-#bim_old=t.test(Old_Westerns_Quantifications$bim_old_norm~ Old_Westerns_Quantifications$phenotype)
-#bad_new=t.test(New_Westerns_Quantifications$BAD_new_norm ~ New_Westerns_Quantifications$phenotype)
-#bad_old=t.test(Old_Westerns_Quantifications$bad_old_norm~ Old_Westerns_Quantifications$phenotype)
+mcl_new=t.test(New_Westerns_Quantifications$MCL1_new_norm ~ New_Westerns_Quantifications$phenotype)
+mcl_old=t.test(Old_Westerns_Quantifications$mcl_old_norm~ Old_Westerns_Quantifications$phenotype)
+bim_new=t.test(New_Westerns_Quantifications$BIM_new_norm ~ New_Westerns_Quantifications$phenotype)
+bim_old=t.test(Old_Westerns_Quantifications$bim_old_norm~ Old_Westerns_Quantifications$phenotype)
+bad_new=t.test(New_Westerns_Quantifications$BAD_new_norm ~ New_Westerns_Quantifications$phenotype)
+bad_old=t.test(Old_Westerns_Quantifications$bad_old_norm~ Old_Westerns_Quantifications$phenotype)
 #
 #pdf("~/Documents/PhDProjects/Multipathway_Modeling/Paper_Revisions/Westernblot_quantification_boxplots.pdf", width=10)
-#par(lwd=4, mfrow = c(1, 2))
+par(lwd=4, mfrow = c(1, 2))
 # MCL1 new
-#boxplot(New_Westerns_Quantifications$MCL1_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n MCL1 (new blot)", "\n", "p-value* =", round(mcl_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+boxplot(New_Westerns_Quantifications$MCL1_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n MCL1 (new blot)", "\n", "p-value* =", round(mcl_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
 # MCL1 old
-#boxplot(Old_Westerns_Quantifications$mcl_old_norm ~ Old_Westerns_Quantifications$phenotype,  main = paste("\n MCL-1 (old blot)", "\n", "p-value* =", round(mcl_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+boxplot(Old_Westerns_Quantifications$mcl_old_norm ~ Old_Westerns_Quantifications$phenotype,  main = paste("\n MCL-1 (old blot)", "\n", "p-value* =", round(mcl_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
 #Bim new
-#par(lwd=4, mfrow = c(1, 2))
-#boxplot(New_Westerns_Quantifications$BIM_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n BIM (new blot)", "\n", "p-value* =", round(bim_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
+par(lwd=4, mfrow = c(1, 2))
+boxplot(New_Westerns_Quantifications$BIM_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n BIM (new blot)", "\n", "p-value* =", round(bim_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
 #Bim old
-#boxplot(Old_Westerns_Quantifications$bim_old_norm ~ Old_Westerns_Quantifications$phenotype,  main = paste("\n BIM (old blot)", "\n", "p-value* =", round(bim_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density)")
+boxplot(Old_Westerns_Quantifications$bim_old_norm ~ Old_Westerns_Quantifications$phenotype,  main = paste("\n BIM (old blot)", "\n", "p-value* =", round(bim_old$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density)")
+
 #bad new
 #par(lwd=4, mfrow = c(1, 2))
 #boxplot(New_Westerns_Quantifications$BAD_new_norm ~ New_Westerns_Quantifications$phenotype,  main = paste("\n BAD (new blot)", "\n", "p-value* =", round(bad_new$p.value, digits=3)), col= c("aquamarine4", "coral3"), ylab="Density")
@@ -715,6 +716,8 @@ library(gplots)
 # Merge the ICBP GFRN pathway predictions with the ICBP drug response
 
 colnames(drugs)[1:15]<-gsub("X","",colnames(drugs)[1:15])
+colnames(drugs)
+
 pred_drug<-merge_drop(single_pathway_best_icbp,drugs,by.x = 0,by.y = 0,all.x =T)
 
 cors_drugs=cor(pred_drug[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],pred_drug[, 1:7],method="spearman",use="pairwise")
@@ -722,27 +725,82 @@ par(lwd=2)
 heatmap.2(cors_drugs, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP:spearman: row scaling", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
 legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
 
-#seperate ER status
+#remove
+ 
+#pred_drug_subtype$phenotype, "pred_drug_subtype$ER")
+#phenotype_subtype= pred_drug_subtype[c(8,110)]
+#summary(phenotype_subtype$phenotype)
 
+#seperate ER status
 pred_drug_subtype=merge_drop(pred_drug,icbp_status)
 colnames(pred_drug_subtype)
 icbp_drug_er_pos=pred_drug_subtype[pred_drug_subtype$ER=="Positive",]
-
+dim(icbp_drug_er_pos) #18
+colnames(icbp_drug_er_pos)
+View(icbp_drug_er_pos)
 icbp_drug_er_neg=pred_drug_subtype[pred_drug_subtype$ER=="Negative",]
+dim(icbp_drug_er_neg) #32
+row.names(icbp_drug_er_neg)
 
 cors_drugs_er_pos=cor(icbp_drug_er_pos[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_er_pos[, 1:7],method="spearman",use="pairwise")
 
 cors_drugs_er_neg=cor(icbp_drug_er_neg[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_er_neg[, 1:7],method="spearman",use="pairwise")
 
+colnames(cors_drugs_er_pos)
+colnames(cors_drugs_er_pos)[4]="HER2"
+colnames(cors_drugs_er_pos)[6]="KRAS"
+rownames(cors_drugs_er_pos)[1]="AKT inhibitor"
+colnames(cors_drugs_er_neg)[4]="HER2"
+colnames(cors_drugs_er_neg)[6]="KRAS"
+rownames(cors_drugs_er_neg)[1]="AKT inhibitor"
+
 #ER Pos
-pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_ERSeperated.pdf", width=6)
-heatmap.2(cors_drugs_er_pos, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP (ER+ Only)",, RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_ERNegative.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_er_pos, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45, main="ICBP, ER Positive", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F, ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+dev.off()
+
 #legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
 #ER neg
-heatmap.2(cors_drugs_er_neg, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP(ER- Only)", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_ER_Pos.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_er_neg, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45,main="ICBP, ER Negative", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F,ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
 #legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+dev.off()
+# seperate HER2
+icbp_drug_her2_pos=pred_drug_subtype[pred_drug_subtype$HER2.y=="Positive",]
+dim(icbp_drug_her2_pos) #18
+icbp_drug_her2_neg=pred_drug_subtype[pred_drug_subtype$HER2.y=="Negative",]
+dim(icbp_drug_her2_neg) #32
 
 
+cors_drugs_her2_pos=cor(icbp_drug_her2_pos[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_her2_pos[, 1:7],method="spearman",use="pairwise")
+colnames(cors_drugs_her2_pos)
+colnames(cors_drugs_her2_neg)
+
+cors_drugs_her2_neg=cor(icbp_drug_her2_neg[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_her2_neg[, 1:7],method="spearman",use="pairwise")
+
+colnames(cors_drugs_her2_pos)[4]="HER2"
+colnames(cors_drugs_her2_pos)[6]="KRAS"
+rownames(cors_drugs_her2_pos)[1]="AKT inhibitor"
+colnames(cors_drugs_her2_neg)[4]="HER2"
+colnames(cors_drugs_her2_neg)[6]="KRAS"
+rownames(cors_drugs_her2_neg)[1]="AKT inhibitor"
+
+#her2 Pos
+pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_HER2_Pos.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_her2_pos, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45, main="ICBP, HER2 Positive ", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F,ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+
+
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+#ER neg
+
+pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_HER2_NEg2.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_her2_neg, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45, main="ICBP, HER2 Negative", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F,ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)"
+dev.off()
 
 
 ```
