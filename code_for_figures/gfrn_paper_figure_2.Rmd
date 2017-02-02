@@ -80,7 +80,7 @@ rm(intrinsic, icbp_status)
 ## (A): TCGA, all pathways
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
-create_figure2_a_TCGA_allpath <- function(expression_subtypes_df, showLegends=TRUE){
+create_figure2_a_TCGA_allpath <- function(expression_subtypes_df, showLegends=TRUE, ersubset="Full"){
   set.seed(123)
   phenotype.annotation <- data.frame(Phenotype=c("Survival Phenotype",
                                                  "Growth Phenotype",
@@ -93,6 +93,11 @@ create_figure2_a_TCGA_allpath <- function(expression_subtypes_df, showLegends=TR
                              col = list(Phenotype = c("Survival Phenotype" =  "coral3",
                                                       "Growth Phenotype" = "aquamarine4")),
                              height = unit(0.333, "cm"))
+  maintitle <- "TCGA BRCA"
+  if(ersubset != "Full"){
+    expression_subtypes_df <- expression_subtypes_df[expression_subtypes_df$ER.Status == ersubset,]
+    maintitle <- paste(maintitle,ersubset, sep=", ER ")
+  }
 
   ha_row_tcga2 = HeatmapAnnotation(df = expression_subtypes_df[,10:13],
                                    col = list(PR.Status =   c("Positive" =  "#4DAF4A",
@@ -126,7 +131,7 @@ create_figure2_a_TCGA_allpath <- function(expression_subtypes_df, showLegends=TR
                 combined_name_fun = NULL,
                 top_annotation = topha,
                 name="Scaled\nPathway\nActivity",
-                column_title = "TCGA BRCA",
+                column_title = maintitle,
                 show_heatmap_legend = showLegends,
                 column_dend_reorder = c(1,100,100,10,1,100,100),
                 heatmap_legend_param = list(color_bar = "continuous"))
@@ -144,7 +149,7 @@ create_figure2_a_TCGA_allpath(single_pathway_best_tcga)
 ## (B): ICBP, all pathways
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
-create_figure2_b_ICBP_allpath <- function(expression_subtypes_df, showLegends=TRUE){
+create_figure2_b_ICBP_allpath <- function(expression_subtypes_df, showLegends=TRUE, ersubset="Full"){
   set.seed(123)
   phenotype.annotation <- data.frame(Phenotype=c("Survival Phenotype",
                                                  "Growth Phenotype",
@@ -157,6 +162,12 @@ create_figure2_b_ICBP_allpath <- function(expression_subtypes_df, showLegends=TR
                              col = list(Phenotype = c("Survival Phenotype" =  "coral3",
                                                       "Growth Phenotype" = "aquamarine4")),
                              height = unit(0.333, "cm"))
+  
+  maintitle <- "ICBP"
+  if(ersubset != "Full"){
+    expression_subtypes_df <- expression_subtypes_df[expression_subtypes_df$ER == ersubset,]
+    maintitle <- paste(maintitle,ersubset, sep=", ER ")
+  }
 
   ha_row_icbp1 = HeatmapAnnotation(df = expression_subtypes_df[,10:13],
                                    name="Intrinsic Subtype",
@@ -189,7 +200,7 @@ create_figure2_b_ICBP_allpath <- function(expression_subtypes_df, showLegends=TR
                 combined_name_fun = NULL,
                 name="Scaled\nPathway\nActivity",
                 top_annotation = topha,
-                column_title = "ICBP",
+                column_title = maintitle,
                 show_heatmap_legend = showLegends,
                 column_dend_reorder = c(1,100,100,10,1,100,100),
                 heatmap_legend_param = list(color_bar = "continuous"))
@@ -389,4 +400,24 @@ create_figure2_d_ICBP_kmeans <- function(expression_subtypes_df, showLegends=TRU
 # dev.off()
 
 create_figure2_d_ICBP_kmeans(single_pathway_best_icbp)
+```
+
+## TCGA, ER Positive Only
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+create_figure2_a_TCGA_allpath(single_pathway_best_tcga, ersubset = "Positive")
+```
+
+## TCGA, ER Negative Only
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+create_figure2_a_TCGA_allpath(single_pathway_best_tcga, ersubset="Negative")
+```
+
+## ICBP, ER Positive Only
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+create_figure2_b_ICBP_allpath(single_pathway_best_icbp, ersubset = "Positive")
+```
+
+## ICBP, ER Negative Only
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+create_figure2_b_ICBP_allpath(single_pathway_best_icbp, ersubset = "Negative")
 ```

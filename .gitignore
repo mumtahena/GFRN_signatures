@@ -11,3 +11,9 @@ GFRN_characterization_in_breast_cancer_Final_files/
 GFRN_characterization_in_breast_cancer_Final_files/figure-html/
 GFRN_characterization_in_breast_cancer_Final_MR_files/
 GFRN_characterization_in_breast_cancer_Final_MR_files/figure-html/
+*.Rproj*
+.RData
+.RHistory
+.Rproj.user
+.Rhistory
+code_for_figures/*.html
