@@ -1,0 +1,1825 @@
+---
+title: "Activity of distinct growth factor receptor network components in breast tumors uncovers two biologically relevant subtypes"
+date: 18April2016,update:20April2016, update:23May2016, update:6June16, update:15June16,update:30June16,update:06Nov16, update:18Dec16, update:24Jan17, update:6Feb17
+name: GRFN_characterization_in_brest_cancer_Revision.Rmd
+output: html_document
+purpose: Performs all analyses and generates figures for the manuscript
+authors: Mumtahena Rahman, David Jenkins, Shelley MacNeil
+---
+#Results for "Activity of distinct growth factor receptor network components in breast tumors uncovers two biologically relevant subtypes"
+```{r cache=TRUE,echo=FALSE}
+
+#Load required packages
+if (!require("gplots")) {
+   install.packages("gplots", dependencies = TRUE)
+   library(gplots)
+   }
+
+if (!require("RColorBrewer")) {
+   install.packages("RColorBrewer", dependencies = TRUE)
+   library(RColorBrewer)
+}
+if (!require("data.table")) {
+   install.packages("data.table", dependencies = TRUE)
+   library(data.table)
+}
+if (!require("mclust")) {
+   install.packages("mclust", dependencies = TRUE)
+   library(mclust)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2", dependencies = TRUE)
+   library(ggplot2)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra", dependencies = TRUE)
+   library(gridExtra)
+}
+
+if (!require("devtools")) {
+   install.packages("devtools", dependencies = TRUE)
+   library(devtools)
+  #install development version of ComplexHeatmap https://github.com/jokergoo/ComplexHeatmap
+   install_github("jokergoo/ComplexHeatmap")  
+   library(ComplexHeatmap)
+}
+   library(ComplexHeatmap)
+if (!require("RColorBrewer")) {
+   install.packages("RColorBrewer", dependencies = TRUE)
+   library(RColorBrewer)
+}
+if (!require("cluster")) {
+   install.packages("cluster", dependencies = TRUE)
+   library(cluster)
+} 
+if (!require("plyr")) {
+   install.packages("plyr", dependencies = TRUE)
+   library(plyr)
+} 
+if (!require("survival")) {
+   install.packages("survival", dependencies = TRUE)
+   library(survival)
+} 
+
+#souce key functions
+source('Key_ASSIGN_functions_balancedsig.R', echo=FALSE)
+
+
+# set colors for heatmap
+my_palette <- colorRampPalette(c("darkblue","aliceblue","brown4"))(n = 299)
+col_breaks = c(seq(0,0.2,length=100), seq(0.2,0.4,length=100), seq(0.4,1,length=100)) 
+
+#Specify input files (modify these locations for your system)
+
+signatures_dir <- "/Users/mumtahenarahman/Dropbox/GFRN_signatures/Datasets"
+###download all the files from ###https://www.dropbox.com/sh/ltfubdiodti5yx0/AAAuVRh34mOOQYq7s7jF6IQJa?dl=0
+###and change working directory
+
+# ICBP files
+icbp_gene_expression<-paste(signatures_dir,"icbp_Rsubread_tpmlog.txt",sep="/")
+icbp_drug_response<-paste(signatures_dir,"ICBP_drugs.txt",sep="/")
+single_pathway_best_icbp_file<-paste(signatures_dir,"optimized_single_pathway_icbp_scaled.txt",sep="/")
+icbp_status_file      <- paste(signatures_dir, "icbpstatus_v2.txt", sep="/")
+icbp_intrinsic_file   <- paste(signatures_dir,  "intrinsic.txt", sep="/")
+
+# TCGA files 
+
+tcga_brca_tumor_gene_expression<-paste(signatures_dir,"PANCAN24_BRCA_1119_TPMlog2.txt",sep="/")
+# downloaded from http://www.ncbi.nlm.nih.gov/geo/download/?acc=GSM1536837&format=file&file=GSM1536837%5F06%5F01%5F15%5FTCGA%5F24%2Etumor%5FRsubread%5FTPM%2Etxt%2Egz and filtered for only BRCA tumor samples
+tcga_clinical<-paste(signatures_dir,"GSE62944_06_01_15_TCGA_24_548_Clinical_Variables_9264_Samples.txt",sep="/")
+#downloaded from http://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE62944&format=file&file=GSE62944%5F06%5F01%5F15%5FTCGA%5F24%5F548%5FClinical%5FVariables%5F9264%5FSamples%2Etxt%2Egz
+tcga_brca_pam50<-paste(signatures_dir,"BRCA.547.PAM50.SigClust.Subtypes.txt",sep="/")
+#downloaded from https://tcga-data.nci.nih.gov/docs/publications/brca_2012/BRCA.547.PAM50.SigClust.Subtypes.txt
+single_pathway_best_tcga_file<-paste(signatures_dir,"optimized_single_pathway_tcga_scaled.txt",sep="/")
+#Input files (Modify These to Your System's Locations)
+
+tcga_status_rds_file  <- paste(signatures_dir,  "tcga_er_pr_her2_formatted.rds", sep="/")
+#tcga_intrinsic_file   <-  paste(signatures_dir , #"TCGA_single_pathway_best_phenotype_intrinsic.txt")##Do we need this file? We could
+
+
+#input icbp pathway predictions
+single_pathway_best_icbp <-read.table(single_pathway_best_icbp_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
+rownames(single_pathway_best_icbp)[50] <- "T47D.Kbluc"
+
+#input tcga pathway predictions
+single_pathway_best_tcga <-read.table(single_pathway_best_tcga_file, stringsAsFactors=FALSE,header=1, row.names=1,sep='\t')
+
+##Read in the ICBP and TCGA datas
+
+# ICBP Drug Response Data
+drugs<-read.delim(icbp_drug_response, header=1, sep='\t',row.names=1)
+
+# ICBP RNA-seq Data
+icbp<-as.matrix(read.table(icbp_gene_expression, sep='\t', stringsAsFactors=FALSE, header=1, row.names=1))
+
+#IHC Subtypes ICBP
+icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
+icbp_status<-icbp_status[rownames(single_pathway_best_icbp),,drop=F]
+#Intrinsic Subtypes ICBP
+intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
+colnames(intrinsic) <- "Intrinsic.Subtype"
+rownames(intrinsic)[50] <- "T47D.Kbluc"
+intrinsic.subtype<-subset(drugs,select = 2)
+rownames(intrinsic.subtype)[45] <- "T47D.Kbluc"
+intrinsic.subtype <- intrinsic.subtype[rownames(single_pathway_best_icbp),,drop=F]
+intrinsic.subtype <- cbind(icbp_status, intrinsic.subtype)
+colnames(intrinsic.subtype)[4]<-"Intrinsic.subtype"
+
+# independent drug response assay (bild lab)
+assay_ec50<-read.table(paste(signatures_dir,"Drug_response_assay.txt",sep="/"),header=1,row.names=1,sep='\t')
+
+# Breast Cancer TCGA gene expression data
+test<-data.frame(fread(tcga_brca_tumor_gene_expression), check.names=F,row.names=1)
+
+#TCGA RPPA Data
+prot_brca<-read.csv(paste(signatures_dir,"TCGA-BRCA-RBN.csv",sep="/"),header=1,check.names = F)
+
+# TCGA BRCA PAM50 (intrinsic subtypes)
+pam50<-read.table(tcga_brca_pam50,sep='\t', stringsAsFactors = T,header=T, row.names=1,check.names = F)
+
+# TCGA BRCA clincal subtypes
+clinicals<-data.frame(fread(tcga_clinical), check.names=F,row.names=1)
+
+#color pallete
+my_palette <- colorRampPalette(c("darkblue","aliceblue","brown4"))(n = 299)
+
+
+#-------------------------------------------------------------------------------
+#Prepare TCGA Input:
+#-------------------------------------------------------------------------------
+#IHC Subtypes TCGA
+er_pr_her2_status2 <- readRDS(tcga_status_rds_file)
+
+#Intrinsic Subtypes TCGA
+tcgaintrinsic<-subset(pam50,select = "PAM50")
+tcgaintrinsic <- tcgaintrinsic[rownames(single_pathway_best_tcga),,drop=F]
+rownames(tcgaintrinsic) <- rownames(single_pathway_best_tcga)
+tcgaintrinsic$PAM50 <- as.character(tcgaintrinsic$PAM50)
+tcgaintrinsic$PAM50[is.na(tcgaintrinsic$PAM50)]<- "Unavailable"
+tcgaintrinsic <- cbind(er_pr_her2_status2, tcgaintrinsic)
+single_pathway_best_tcga <- cbind(single_pathway_best_tcga, tcgaintrinsic)
+
+
+
+#-------------------------------------------------------------------------------
+#Prepare ICBP Input:
+#-------------------------------------------------------------------------------
+#input icbp pathway data
+
+#IHC Subtypes ICBP
+icbp_status <- read.table(icbp_status_file, row.names = 1, header=T, sep="\t")
+#Intrinsic Subtypes ICBP
+intrinsic <- read.table(icbp_intrinsic_file, row.names = 1, header=T, sep="\t")
+colnames(intrinsic) <- "Intrinsic.Subtype"
+rownames(intrinsic)[50] <- "T47D.Kbluc"
+intrinsic <- intrinsic[rownames(single_pathway_best_icbp),,drop=F]
+intrinsic <- cbind(icbp_status, intrinsic)
+single_pathway_best_icbp <- cbind(single_pathway_best_icbp, intrinsic)
+#rm(intrinsic, icbp_status)
+
+```
+##2(A)-(D):Two dominant phenotypes in breast cancer patients and cell lines 
+### 2(A): TCGA , all pathways
+```{r}
+#2(A): TCGA , all pathways
+create_figure2_a_TCGA_allpath <- function(expression_subtypes_df, showLegends=TRUE, ersubset="Full"){
+  set.seed(123)
+  phenotype.annotation <- data.frame(Phenotype=c("Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype"))
+  topha <- HeatmapAnnotation(df = phenotype.annotation,
+                             col = list(Phenotype = c("Survival Phenotype" =  "coral3",
+                                                      "Growth Phenotype" = "aquamarine4")),
+                             height = unit(0.333, "cm"))
+  maintitle <- "TCGA BRCA"
+  if(ersubset != "Full"){
+    expression_subtypes_df <- expression_subtypes_df[expression_subtypes_df$ER.Status == ersubset,]
+    maintitle <- paste(maintitle,ersubset, sep=", ER ")
+  }
+
+  ha_row_tcga2 = HeatmapAnnotation(df = expression_subtypes_df[,10:13],
+                                   col = list(PR.Status =   c("Positive" =  "#4DAF4A",
+                                                              "Negative" = "#984EA3",
+                                                              "Indeterminate" = "black",
+                                                              "Unavailable" = "grey"),
+                                              HER2.Status = c("Positive" =  "#FFFF33",
+                                                              "Negative" = "#F781BF",
+                                                              "Indeterminate" = "black",
+                                                              "Equivocal" = "skyblue",
+                                                              "Unavailable" = "grey"),
+                                              ER.Status =   c("Positive" =  "#E41A1C",
+                                                              "Negative" = "#377EB8",
+                                                              "Indeterminate" = "black",
+                                                              "Unavailable" = "grey"),
+                                              PAM50 =       c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                              "LumB" = '#fccaa4',
+                                                              "Her2" = brewer.pal(6, "Dark2")[4],
+                                                              "Basal" = '#e41a1c',
+                                                              "Normal" = brewer.pal(6, "Dark2")[6],
+                                                              "Unavailable"="grey")),
+                                   which = "row",
+                                   width = unit(1.333, "cm"),
+                                   show_legend = showLegends)
+  h1 <- Heatmap(expression_subtypes_df[,1:7],
+                cluster_rows = T,
+                cluster_columns = T,
+                show_row_names = F,
+                show_column_names = T,
+                row_title_gp = gpar(fontsize =10),
+                combined_name_fun = NULL,
+                top_annotation = topha,
+                name="Scaled\nPathway\nActivity",
+                column_title = maintitle,
+                show_heatmap_legend = showLegends,
+                column_dend_reorder = c(1,100,100,10,1,100,100),
+                heatmap_legend_param = list(color_bar = "continuous"))
+  draw(h1+ha_row_tcga2,row_dend_side = "left", annotation_legend_side = "bottom")
+}
+
+#uncomment to create PDF version of 2a
+# pdf("Fig2a.pdf", width=6)
+# create_figure2_a_TCGA_allpath(single_pathway_best_tcga, showLegends = F)
+# dev.off()
+
+create_figure2_a_TCGA_allpath(single_pathway_best_tcga)
+
+```
+
+### (B): ICBP, all pathways
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+create_figure2_b_ICBP_allpath <- function(expression_subtypes_df, showLegends=TRUE, ersubset="Full"){
+  set.seed(123)
+  phenotype.annotation <- data.frame(Phenotype=c("Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype"))
+  topha <- HeatmapAnnotation(df = phenotype.annotation,
+                             col = list(Phenotype = c("Survival Phenotype" =  "coral3",
+                                                      "Growth Phenotype" = "aquamarine4")),
+                             height = unit(0.333, "cm"))
+  
+  maintitle <- "ICBP"
+  if(ersubset != "Full"){
+    expression_subtypes_df <- expression_subtypes_df[expression_subtypes_df$ER == ersubset,]
+    maintitle <- paste(maintitle,ersubset, sep=", ER ")
+  }
+
+  ha_row_icbp1 = HeatmapAnnotation(df = expression_subtypes_df[,10:13],
+                                   name="Intrinsic Subtype",
+                                   col = list(PR = c("Positive" =  "#4DAF4A",
+                                                     "Negative" = "#984EA3",
+                                                     "Unavailable" = "grey"),
+                                              HER2 = c("Positive" =  "#FFFF33",
+                                                       "Negative" = "#F781BF",
+                                                       "Unavailable" = "grey"),
+                                              ER = c("Positive" =  "#E41A1C",
+                                                     "Negative" = "#377EB8",
+                                                     "Unavailable" = "grey"),
+                                              Intrinsic.Subtype = c("Basal" = '#e41a1c',
+                                                                    "Claudin-low" = '#fccaa4',
+                                                                    "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                                    "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                                    "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                                    "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                                    "Unavailable" = "grey")),
+                                   which = "row",
+                                   width = unit(1.333, "cm"),
+                                   show_legend = showLegends)
+
+  h1 <- Heatmap(expression_subtypes_df[,1:7],
+                cluster_rows = T,
+                cluster_columns = T,
+                show_row_names = F,
+                show_column_names = T,
+                row_title_gp = gpar(fontsize =10),
+                combined_name_fun = NULL,
+                name="Scaled\nPathway\nActivity",
+                top_annotation = topha,
+                column_title = maintitle,
+                show_heatmap_legend = showLegends,
+                column_dend_reorder = c(1,100,100,10,1,100,100),
+                heatmap_legend_param = list(color_bar = "continuous"))
+
+  draw(h1+ha_row_icbp1,row_dend_side = "left", annotation_legend_side = "bottom")
+}
+
+#uncomment to create PDF version of 2b
+# pdf("Fig2b.pdf", width=6)
+# create_figure2_b_ICBP_allpath(single_pathway_best_icbp, showLegends = F)
+# dev.off()
+
+create_figure2_b_ICBP_allpath(single_pathway_best_icbp)
+```
+
+### (C): TCGA, k-means of 4 pathways
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+create_figure2_c_TCGA_kmeans <- function(expression_subtypes_df, showLegends=TRUE){
+  set.seed(123)
+  phenotype.annotation <- data.frame(Phenotype=c("Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype"))
+  topha <- HeatmapAnnotation(df = phenotype.annotation,
+                             col = list(Phenotype = c("Survival Phenotype" =  "coral3",
+                                                      "Growth Phenotype" = "aquamarine4")),
+                             height = unit(0.333, "cm"))
+  
+  kmeans.4.clusters.tcga <- expression_subtypes_df[,"kmeans.cluster",drop=F]
+  colnames(kmeans.4.clusters.tcga) <- "KMeans.Clusters"
+  ha_row_tcga = HeatmapAnnotation(df = kmeans.4.clusters.tcga,
+                                  col = list(KMeans.Clusters = c("Survival/HER2 high" = brewer.pal(5, "Set1")[1],
+                                                                 "Survival/HER2 low" = brewer.pal(5, "Set1")[2],
+                                                                 "Growth/BAD high" = brewer.pal(5, "Set1")[3],
+                                                                 "Growth/BAD low" = brewer.pal(5, "Set1")[5])),
+                                  which = "row",
+                                  width = unit(0.333, "cm"),
+                                  show_legend = showLegends)
+
+  ha_row_tcga2 = HeatmapAnnotation(df = expression_subtypes_df[,10:13],
+                                   col = list(PR.Status = c("Positive" =  "#4DAF4A",
+                                                            "Negative" = "#984EA3",
+                                                            "Indeterminate" = "black",
+                                                            "Unavailable" = "grey"),
+                                              HER2.Status = c("Positive" =  "#FFFF33",
+                                                              "Negative" = "#F781BF",
+                                                              "Indeterminate" = "black",
+                                                              "Equivocal" = "skyblue",
+                                                              "Unavailable" = "grey"),
+                                              ER.Status = c("Positive" =  "#E41A1C",
+                                                            "Negative" = "#377EB8",
+                                                            "Indeterminate" = "black",
+                                                            "Unavailable" = "grey"),
+                                              PAM50 = c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                        "LumB" = '#fccaa4',
+                                                        "Her2" = brewer.pal(6, "Dark2")[4],
+                                                        "Basal" = '#e41a1c',
+                                                        "Normal" = brewer.pal(6, "Dark2")[6],
+                                                        "Unavailable"="grey")),
+                                   which = "row",
+                                   width = unit(1.333, "cm"),
+                                   show_legend = showLegends)
+
+  h1 <- Heatmap(single_pathway_best_tcga[,c(1:4)],
+                cluster_rows = T,
+                cluster_columns = T,
+                show_row_names = F,
+                show_column_names = T,
+                split=factor(kmeans.4.clusters.tcga$KMeans.Clusters,
+                             levels=c("Survival/HER2 high",
+                                      "Survival/HER2 low",
+                                      "Growth/BAD high",
+                                      "Growth/BAD low")),
+                row_title_gp = gpar(fontsize =10),
+                column_dend_reorder = c(1,4,100,2),
+                combined_name_fun = NULL,
+                top_annotation = topha,
+                name="Scaled\nPathway\nActivity",
+                column_title = "TCGA BRCA",
+                show_heatmap_legend = showLegends,
+                heatmap_legend_param = list(color_bar = "continuous"))
+  draw(ha_row_tcga+h1+ha_row_tcga2,row_dend_side = "left", annotation_legend_side = "bottom")
+}
+
+#uncomment to create PDF version of 2c
+# pdf("Fig2c.pdf", width=5.32)
+# create_figure2_c_TCGA_kmeans(single_pathway_best_tcga, showLegends = F)
+# dev.off()
+
+create_figure2_c_TCGA_kmeans(single_pathway_best_tcga)
+```
+
+### (D): ICBP, k-means of 4 pathways
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+
+create_figure2_d_ICBP_kmeans <- function(expression_subtypes_df, showLegends=TRUE){
+  set.seed(123)
+  phenotype.annotation <- data.frame(Phenotype=c("Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Survival Phenotype",
+                                                 "Growth Phenotype",
+                                                 "Growth Phenotype"))
+  topha <- HeatmapAnnotation(df = phenotype.annotation,
+                             col = list(Phenotype = c("Survival Phenotype" =  "coral3",
+                                                      "Growth Phenotype" = "aquamarine4")),
+                             height = unit(0.333, "cm"))
+  
+  kmeans.4.clusters <- expression_subtypes_df[,"kmeans.cluster",drop=F]
+  colnames(kmeans.4.clusters) <- "KMeans.Clusters"
+  ha_row_icbp2 <- HeatmapAnnotation(df = kmeans.4.clusters,
+                                    name="K-Means Clusters",
+                                    col = list(KMeans.Clusters = c("Survival/HER2 high" = brewer.pal(5, "Set1")[1],
+                                                                   "Survival/HER2 low" = brewer.pal(5, "Set1")[2],
+                                                                   "Growth/BAD high" = brewer.pal(5, "Set1")[3],
+                                                                   "Growth/BAD low" = brewer.pal(5, "Set1")[5])),
+                                    which = "row",
+                                    width = unit(0.333, "cm"),
+                                    show_legend = showLegends)
+  
+  ha_row_icbp1 <- HeatmapAnnotation(df = expression_subtypes_df[,10:13],
+                                    name="Intrinsic Subtype",
+                                    col = list(PR = c("Positive" =  "#4DAF4A",
+                                                      "Negative" = "#984EA3",
+                                                      "Unavailable" = "grey"),
+                                               HER2 = c("Positive" =  "#FFFF33",
+                                                        "Negative" = "#F781BF",
+                                                        "Unavailable" = "grey"),
+                                               ER = c("Positive" =  "#E41A1C",
+                                                      "Negative" = "#377EB8",
+                                                      "Unavailable" = "grey"),
+                                               Intrinsic.Subtype = c("Basal" = '#e41a1c',
+                                                                     "Claudin-low" = '#fccaa4',
+                                                                     "HER2-Basal" = brewer.pal(6, "Dark2")[3],
+                                                                     "HER2-Luminal" = brewer.pal(6, "Dark2")[4],
+                                                                     "Luminal" = brewer.pal(6, "Dark2")[5],
+                                                                     "Normal-like" = brewer.pal(6, "Dark2")[6],
+                                                                     "Unavailable" = "grey")),
+                                    which = "row",
+                                    width = unit(1.333, "cm"),
+                                    show_legend = showLegends)
+
+  h1 <- Heatmap(single_pathway_best_icbp[,c(1,2,3,4)],
+                cluster_rows = T,
+                cluster_columns = T,
+                column_dend_reorder = c(1,4,400,1),
+                show_row_names = F,
+                show_column_names = T,
+                split=factor(kmeans.4.clusters$KMeans.Clusters,
+                             levels=c("Survival/HER2 high",
+                                      "Survival/HER2 low",
+                                      "Growth/BAD high",
+                                      "Growth/BAD low")),
+                row_title_gp = gpar(fontsize =10),
+                combined_name_fun = NULL,
+                name="Scaled\nPathway\nActivity",
+                top_annotation = topha,
+                column_title = "ICBP",
+                show_heatmap_legend = showLegends,
+                heatmap_legend_param = list(color_bar = "continuous"))
+  
+  draw(ha_row_icbp2+h1+ha_row_icbp1, row_dend_side = "left", annotation_legend_side = "bottom")
+}
+
+#uncomment to create PDF version of 2d
+# pdf("Fig2d.pdf", width=5.32)
+# create_figure2_d_ICBP_kmeans(single_pathway_best_icbp, showLegends = F)
+# dev.off()
+
+create_figure2_d_ICBP_kmeans(single_pathway_best_icbp)
+```
+
+## Unsupervised variance analysis confirms the significance of phenotypes in breast cancer biology
+###3(A)-(B):Perform Principal Component Analysis 
+```{r,cache=TRUE,echo=FALSE}
+#-------------------------------------------------------------------------------
+#Prepare ICBP gene expression data:
+#-------------------------------------------------------------------------------
+
+# Remove genes with low variation (filtering)
+icbp_f <-icbp[apply(icbp[,1:55]==0,1,mean) < 0.85,]
+
+
+# Perfrom PCA Analysis 
+pca_mat_icbp <- prcomp(t(icbp_f), center=T,scale=T)
+rownames(pca_mat_icbp$x)[1:7]<-gsub("X","",rownames(pca_mat_icbp$x)[1:7])
+
+# Plot ICBP PCA Results
+#plot(pca_mat_icbp,main="ICBP")
+cum_icbp<-cumsum((pca_mat_icbp$sdev)^2) / sum(pca_mat_icbp$sdev^2) #calculates cumulative proportion of variances
+print(paste("Proportion of variance contributed by first 5 principal components in ICBP gene expression data:",cum_icbp[5]),sep=" ")#Proportion of variance contributed by first 5 principal component
+#correlate the PCAs with GFRN pathway predictions from ASSIGN
+icbp_pca_sig_cors=cor(pca_mat_icbp$x,single_pathway_best_icbp[,1:7],method="spearman")
+
+#heatmap.2(as.matrix(icbp_pca_sig_cors[1:5,1:7]),col=my_palette,margins = c(9,7), trace= "none", main="ICBP PC/Signature Cors")## Commented out the plots we didnt show. 
+
+#-------------------------------------------------------------------------------
+#Prepare TCGA gene expression data:
+#-------------------------------------------------------------------------------
+
+# Filter for low varying genes
+#dim(test) #23368
+test_f<-test[apply(test[,1:ncol(test)]==0,1,mean) < 0.85,]
+#dim(test_f) #21307
+
+# Run PCA analysis in TCGA
+pca_mat <- prcomp(t(test_f), center=T,scale=T)
+cum_tcga<-cumsum((pca_mat$sdev)^2) / sum(pca_mat$sdev^2) #calculates cumulative proportiono of variances
+print(paste("Proportion of variance contributed by first 5 principal components in TCGA BRCA gene expression data:",cum_tcga[5]),sep=" ")#Proportion of variance contributed by first 5 principal components
+
+
+
+```
+
+
+###3: Correlate TCGA Principal Components with ASSIGN generated GFRN pathway predictions
+```{r,cache=TRUE,echo=FALSE}
+library(gplots)
+# Plot TCGA PCA results
+plot(pca_mat,main="PCA in TCGA BRCA")
+pca1_5=pca_mat$x[,1:5]
+pca_pathway_cors= cor(pca1_5, single_pathway_best_tcga[,1:7], method = "spearman")
+
+# Heatmap with signature/PC correlations 
+heatmap.2(as.matrix(pca_pathway_cors),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), key.title="", key=T)
+legend("bottomleft",legend = c("Survival", "Growth"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 8,cex = .7,border = NULL)
+```
+
+##4(A)-(E):Survival and growth phenotypes express dichotomous cell survival mechanisms
+###4(A):Heatmap of breast cancer cell lines from Western Blots
+```{r,echo=FALSE,cache=TRUE}
+
+#parse the cell lines
+selected_celllines<-c("AU565","BT474","BT483","BT549","CAMA1","HCC1143","HCC1419","HCC1428","HCC1806","HCC1937","HCC1954","HCC38","HCC70","HS578T","JIMT1","MCF7","MDAMB175","MDAMB231","T47D","ZR751")
+scaled_selected<-single_pathway_best_icbp[selected_celllines,]
+
+#make the heatmap
+par(mfrow=c(1,1),lwd=3)
+heatmap.2(as.matrix(single_pathway_best_icbp[selected_celllines,c(1:7)]),col=my_palette,trace="none",margins=c(7,7),main="",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"), ,key.title="",scale="row", key=T)#,Rowv=F,Colv=F)
+legend("topright",legend = c("Survival phenotype", "Growth phenotype"), col = c("coral3","aquamarine4"),  lty= 1,lwd = 8,cex = 0.5)
+
+```
+
+###4(C)-(E): Gene and protein expression are significantly different between growth and survival phenotypes
+```{r,echo=FALSE, cache=T}
+
+# pull the genes we are intereted in (BH3 apoptosis genes)    
+exp<-as.data.frame(t(icbp[c("BCL2L11","MCL1"),]))
+
+#rename rownames 
+rownames(exp)[1:7]<-c("184A1","184B5","21MT1","21MT2","21NT","21PT","600MPE")
+
+# merge ICBP expression data with phenotypes and subtypes
+exp_best<-merge_drop(single_pathway_best_icbp[,1:8],exp)
+#exp_best_subtypes= merge_drop(exp_best, icbp_status)
+
+# Boxplot MCL1 and BIM for the phenotypes (with the normals)
+par(mfrow = c(1,1), lwd=4)
+for (i in 9:ncol(exp_best)) {
+  tmp = t.test(exp_best[,i] ~ exp_best[,8])
+  boxplot(exp_best[,i] ~ exp_best[,8],
+         main = paste(colnames(exp_best)[i],"\np-value* =",tmp$p.value), col= c("aquamarine4", "coral3"), ylab="log2 (Transcript per million)")
+}
+
+#Look for protein (RPPA) expression differences between apoptosis molecules in TCGA
+# TCGA protein boxplots for phenotypes
+# make TCGA names long
+prot_brca$TCGA_patient_barcode<-short_to_long_TCGA_id(shortnames=gsub(pattern="\\.","-",as.character(prot_brca$TCGA_patient_barcode)),longnames=gsub(pattern="\\.","-",rownames(single_pathway_best_tcga)))
+
+# merge protein data with pathway predictions
+data_prot<-merge(single_pathway_best_tcga,prot_brca,by.x=0,by.y=1)
+
+# pull out apoptoic proteins
+prot_of_interest<-c("BIM","MCL1")
+colnames(data_prot)<-toupper(colnames(data_prot))
+colnames(data_prot)<-gsub(pattern = "-",replacement = "",colnames(data_prot))
+#data_prot_subtype<-merge(data_prot, er_pr_her2_status2, by.x=1,by.y=0)
+
+# Boxblot the protein expression across phenotypes
+#pdf("TCGA_apoptosis_boxplots_RPPA.pdf", width=6)
+for(i in 1:length(prot_of_interest)){
+  print(paste("analyzing",prot_of_interest[i]))
+  if(prot_of_interest[i]%in%colnames(data_prot)){
+    print(paste(prot_of_interest[i],"data available"))
+    tmp<-t.test(data_prot[,prot_of_interest[i]]~data_prot$PHENOTYPE)
+    par(lwd=4)
+    boxplot(data_prot[,prot_of_interest[i]]~data_prot$PHENOTYPE,main=paste(prot_of_interest[i],"\np-value:",tmp$p.value,sep=' '), col= c("aquamarine4", "coral3"),yaxt= 'n', ylab="RPPA Score")   
+    axis(2,cex.axis=2)
+  }
+  else{
+    print("Sorry!This protein is unavailable in TCGA RPPA dataset!")
+  }
+}
+
+#Look for gene expression differences between apoptosis molecules in TCGA
+###TCGA gene expression based phenotype analysis
+exp_tcga<-t(test_f[c("BCL2L11","MCL1"),])
+exp_best<-merge_drop(single_pathway_best_tcga,exp_tcga)
+#tcga_exp_subtypes<-merge_drop(exp_best,er_pr_her2_status )
+
+# Boxplots for TCGA gene exprssion between phenotypes
+par(mfrow = c(1,1), lwd=4)
+for (i in 14:ncol(exp_best)) {
+  print(i)
+  tmp = t.test(exp_best[,i] ~ exp_best[,8])
+  boxplot(exp_best[,i] ~ exp_best[,8],main = paste(colnames(exp_best)[i],"\nTCGA p-value* =",tmp$p.value),col= c("aquamarine4", "coral3"))
+}
+
+```
+
+## 5(A) &(B): Growth factor network phenotypes reflect dichotomous drug response in breast cancer cell lines
+##5(A): Correlate ICBP GFRN pathway predictions with ICBP drug response and make Heatmap
+```{r, echo=FALSE,cache=TRUE}
+# Merge the ICBP GFRN pathway predictions with the ICBP drug response
+
+colnames(drugs)[1:15]<-gsub("X","",colnames(drugs)[1:15])
+
+pred_drug<-merge_drop(single_pathway_best_icbp,drugs)#,by.x = 0,by.y = 0,all.x =T)
+
+cors_drugs=cor(pred_drug[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],pred_drug[, 1:7],method="spearman",use="pairwise")
+par(lwd=4)
+heatmap.2(cors_drugs, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 0.8, main="ICBP:spearman: row scaling", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+
+#remove
+ 
+#pred_drug_subtype$phenotype, "pred_drug_subtype$ER")
+#phenotype_subtype= pred_drug_subtype[c(8,110)]
+#summary(phenotype_subtype$phenotype)
+###########
+```
+
+##5(B): Correlate GFRN pathway predictions with drug response in an independent drug assay and make Heatmap
+```{r, echo=FALSE,include=FALSE}
+library(gplots)
+# merge drug response data with GFRN pathway predictions
+assay_ec50_preds<-merge_drop(assay_ec50,single_pathway_best_icbp)
+cors_spearman=cor(assay_ec50_preds[,c(1:5,7:9)], assay_ec50_preds[,c(10:16)],  method="spearman", use="pairwise")
+heatmap.2(cors_spearman,margins =c(10,10), col=my_palette, trace="none",main="",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="row")
+####Not included in manuscript
+#Start
+#assay_ec50_preds_subtype<-merge_drop(assay_ec50_preds, icbp_status)
+#assay_ec50_preds_subtype=assay_ec50_preds_subtype[,-21]
+#colnames(assay_ec50_preds_subtype)[13]="HER2"
+indep_drug_er_pos=assay_ec50_preds[assay_ec50_preds$ER.Status=="Positive",]
+indep_drug_er_neg=assay_ec50_preds[assay_ec50_preds$ER.Status=="Negative",]
+
+cors_spearman_pos=cor(indep_drug_er_pos[,c(1,2,3,4,5,7,8,9)], indep_drug_er_pos[,c(10:16)],  method="spearman", use="pairwise")
+cors_spearman_neg=cor(indep_drug_er_neg[,c(1,2,3,4,5,7,8,9)], indep_drug_er_neg[,c(10:16)],  method="spearman", use="pairwise")
+
+
+heatmap.2(cors_spearman_pos, col=my_palette, trace="none",main="Independent Assay(ER+)",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
+
+heatmap.2(cors_spearman_neg, col=my_palette, trace="none",main="Independent Assay(ER-)",RowSideColors = c("pink","yellow","lightblue","pink","yellow","yellow","pink","lightblue"),ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"),density.info = 'none', scale="column")
+#End
+
+```
+
+##6:Differential drug response identified in GFRN phenotype heterogeneity
+```{r,cache=TRUE,echo=FALSE,warning=FALSE}
+
+rownames(drugs)[38] <- "SUM1315"
+rownames(drugs)[45] <- "T47D.Kbluc"
+rownames(drugs)[52] <- "MDAMB175"
+
+drugs_all <- drugs[rownames(single_pathway_best_icbp),11:100]
+
+drugs_selected <- drugs_all[rownames(single_pathway_best_icbp),c("GSK2141795","PF.4691502",
+  "Everolimus","Sigma.AKT1.2.inhibitor","GSK1059868","Rapamycin",
+                                                    "Temsirolimus","GSK2126458",
+                                                    "GSK2119563","GSK1059615",
+                                                    "Lapatinib","AG1478",
+                                                    "Gefitinib","AZD6244",
+                                                    "Erlotinib","GSK1120212",
+                                                    "Docetaxel","CGC.11047",
+                                                    "Paclitaxel","Cisplatin")]
+
+ttest_boxplots <- function(drugdata, clusters, selected_clustera, selected_clusterb, selected_drug){
+  numa <- sum(!is.na(drugdata[rownames(clusters)[clusters == selected_clustera], selected_drug]))
+  numb <- sum(!is.na(drugdata[rownames(clusters)[clusters == selected_clusterb], selected_drug]))
+  if(numa < 2 | numb < 2){
+    return(NA)
+  }
+  result <- t.test(drugdata[rownames(clusters)[clusters == selected_clustera], selected_drug],
+                   drugdata[rownames(clusters)[clusters == selected_clusterb], selected_drug], na.rm=T)
+  return(result$p.value)
+}
+
+akt.ttest.results <- unlist(lapply(colnames(drugs), function(x) ttest_boxplots(drugs, single_pathway_best_icbp$kmeans.cluster, "AKT/HER2 high", "AKT/HER2 low", x)))
+akt.ttest.results.fdr <- p.adjust(akt.ttest.results, method="fdr")
+
+egfr.ttest.results <- unlist(lapply(colnames(drugs), function(x) ttest_boxplots(drugs, single_pathway_best_icbp$kmeans.cluster, "EGFR/BAD high", "EGFR/BAD low", x)))
+egfr.ttest.results.fdr <- p.adjust(egfr.ttest.results, method="fdr")
+
+ttest_results <- data.frame(akt.ttest.results=akt.ttest.results,
+                            akt.ttest.results.fdr=akt.ttest.results.fdr,
+                            egfr.ttest.results=egfr.ttest.results,
+                            egfr.ttest.results.fdr=egfr.ttest.results.fdr,
+                            row.names=colnames(drugs))
+single_pathway_best_icbp$kmeans.cluster[single_pathway_best_icbp$kmeans.cluster == "Survival/HER2 high"] <- "Survival\nHER2 high"
+single_pathway_best_icbp$kmeans.cluster[single_pathway_best_icbp$kmeans.cluster  == "Survival/HER2 low"] <- "Survival\nHER2 low"
+single_pathway_best_icbp$kmeans.cluster[single_pathway_best_icbp$kmeans.cluster =="Growth/BAD high"] <- "Growth\nBAD high"
+single_pathway_best_icbp$kmeans.cluster[single_pathway_best_icbp$kmeans.cluster  == "Growth/BAD low"] <- "Growth\nBAD low"
+
+pathway_colors <- brewer.pal(5, "Set1")[c(1,2,3,5)]
+
+
+
+plot_drug_boxplots_final <- function(drugdata, clusters, selected, fillcolor){
+  colnames(clusters) <- "clusters"
+  merged <- merge(drugdata, clusters, by=0, all=T)
+  merged_melt <- melt(merged, id.vars = c("Row.names", "clusters"))
+  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
+  theplot <- ggplot(merged_melt_s, aes(factor(clusters, 
+                                              levels = c("Survival\nHER2 high",
+                                                         "Survival\nHER2 low",
+                                                         "Growth\nBAD high",
+                                                         "Growth\nBAD low")), value)) +
+    geom_boxplot(outlier.shape = NA, fill=fillcolor) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid'),
+          plot.title = element_text(hjust = 0.5)) +
+    xlab("") +
+    ylab("-log(EC50)") +
+    ggtitle(selected) +
+    geom_point(position=position_jitter(width = 0.1))
+  return(theplot)
+}
+plota <- plot_drug_boxplots_final(drugs_selected,subset(single_pathway_best_icbp,select = kmeans.cluster), "GSK1059615", pathway_colors)
+plotb <- plot_drug_boxplots_final(drugs_selected,subset(single_pathway_best_icbp,select = kmeans.cluster), "Lapatinib", pathway_colors)
+plotc <- plot_drug_boxplots_final(drugs_selected,subset(single_pathway_best_icbp,select = kmeans.cluster), "AG1478", pathway_colors)
+plotd <- plot_drug_boxplots_final(drugs_selected,subset(single_pathway_best_icbp,select = kmeans.cluster), "Gefitinib", pathway_colors)
+
+
+grid.arrange(plota,plotb,plotc,plotd, nrow=2,ncol=2)
+
+
+
+```
+#Supplemental Analysis
+###Supplemental Figures 3(A)-(H): 
+Protein based pathway validations codes are in ./ASSIGN folder. Gene expression, mutation and IHC-based validations are shown here.
+```{r,echo=FALSE,cache=TRUE}
+#Gene expression based validation to check if predictions follow the main gene expression, ie, high prediction of a  pathway should have high expression of that pathway gene.
+
+create_high_low_expression <-
+  function(gene = NA,cutoff_percentile_high = 0.9,cutoff_percentile_low = 0.1)
+  {
+  exp <- test[gene,order(test[gene,])]
+  cutoff_high <-
+  quantile(t(test[gene,order(test[gene,])]),cutoff_percentile_high)
+  cutoff_low <-
+  quantile(t(test[gene,order(test[gene,])]),cutoff_percentile_low)
+  
+  gene_class <- NULL
+  for (i in 1:length(exp)) {
+  if (exp[i] >= cutoff_high)
+  {
+  gene_class[i] = "HIGH"
+  }
+  else if (exp[i] <= cutoff_low)
+  {
+  gene_class[i] = "LOW"
+  }
+  else if (cutoff_low<exp[i] & exp[i]<cutoff_high) 
+  {
+  gene_class[i] = "Intermediate"
+  }
+  }
+  exp_class <- as.data.frame(cbind(t(exp),(gene_class)))
+  rownames(exp_class) <- names(exp)
+  colnames(exp_class)[2] <- paste(gene,"class",sep = "_")
+  exp_class[,1] <- as.numeric(exp)
+  return(exp_class)
+  }
+akt_class<-create_high_low_expression(gene = "AKT1",cutoff_percentile_high = .9,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(akt_class,single_pathway_best_tcga)[,3]~merge_drop(akt_class,single_pathway_best_tcga)[,2],ylab="Estimated AKT activity")
+
+egfr_class<-create_high_low_expression(gene = "EGFR",cutoff_percentile_high = .9,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(egfr_class,single_pathway_best_tcga)[,5]~merge_drop(egfr_class,single_pathway_best_tcga)[,2],ylab="Estimated EGFR activity")
+
+her2_class<-create_high_low_expression(gene = "ERBB2",cutoff_percentile_high = .66,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(her2_class,single_pathway_best_tcga)[,6]~merge_drop(her2_class,single_pathway_best_tcga)[,2],ylab="Estimated HER2 activity")
+
+igf1r_class<-create_high_low_expression(gene = "IGF1R",cutoff_percentile_high = .8,cutoff_percentile_low = 0.2)
+boxplot2(merge_drop(igf1r_class,single_pathway_best_tcga)[,7]~merge_drop(igf1r_class,single_pathway_best_tcga)[,2],ylab="Estimated IGF1R activity")
+
+raf1_class<-create_high_low_expression(gene = "RAF1",cutoff_percentile_high = .9,cutoff_percentile_low = 0.1)
+boxplot2(merge_drop(raf1_class,single_pathway_best_tcga)[,9]~merge_drop(raf1_class,single_pathway_best_tcga)[,2],ylab="Estimated RAF1 activity")
+
+
+##########
+brca_mut<-t(read.table(paste(signatures_dir,"TCGA_PANCAN_mut.txt",sep="/"),header=1,row.names=1, sep='\t', check.names = F))
+rownames(brca_mut)<- short_to_long_TCGA_id(longnames = colnames(test),shortnames = rownames(brca_mut))
+pred_mut<- merge_drop(single_pathway_best_tcga,brca_mut)
+
+boxplot2(pred_mut$AKT~pred_mut$PIK3CA,ylab="AKT estimated pathway",names=c("PIK3CA WT","PIK3CA mutated"),main=paste("p-value:",round(t.test(pred_mut$AKT~pred_mut$PIK3CA)$p.value,digits = 3),sep=" "))
+boxplot2(pred_mut$BAD~pred_mut$PIK3CA,ylab="BAD estimated pathway",names=c("PIK3CA WT","PIK3CA mutated"),main=paste("p-value: ",t.test(pred_mut$BAD~pred_mut$PIK3CA)$p.value,sep=" "))
+er_pr_her2_status<-t(clinicals)[,c("er_status_by_ihc","pr_status_by_ihc","her2_status_by_ihc")]
+subtypes_preds_ihc<-merge(single_pathway_best_tcga,er_pr_her2_status,by.x = 0,by.y = 0,all.x =T)
+
+# seperate into ER, PR, HER + and -
+er_pos<-subtypes_preds_ihc[subtypes_preds_ihc$er_status_by_ihc=="Positive",]
+er_neg<-subtypes_preds_ihc[subtypes_preds_ihc$er_status_by_ihc=="Negative",]
+pr_pos<-subtypes_preds_ihc[subtypes_preds_ihc$pr_status_by_ihc=="Positive",]
+pr_neg<-subtypes_preds_ihc[subtypes_preds_ihc$pr_status_by_ihc=="Negative",]
+her_pos<-subtypes_preds_ihc[subtypes_preds_ihc$her2_status_by_ihc=="Positive",]
+her_neg<-subtypes_preds_ihc[subtypes_preds_ihc$her2_status_by_ihc=="Negative",]
+survival_phen<-single_pathway_best_tcga[single_pathway_best_tcga$phenotype=="Survival Phenotype",]
+growth_phen<-single_pathway_best_tcga[single_pathway_best_tcga$phenotype=="Growth Phenotype",]
+
+# boxplot her2+ vs her2 -
+boxplot2(her_pos$HER2,her_neg$HER2,ylab="HER2 Activity",ylim=c(-3,3),las=1,names=c("HER2 +","HER2 -"),ylab="Estimated HER2 activity",main=paste("p-value: ",t.test(her_pos$HER2,her_neg$HER2)$p.value,sep=" "))
+```
+### Supplemental Figures 4(A)-(D): Pathway activity estimates between ER+ and ER- samples in breast cancer cell lines and patient data. 
+```{r,echo=F,cache=T}
+#TCGA, ER Positive Only
+
+create_figure2_a_TCGA_allpath(single_pathway_best_tcga, ersubset = "Positive")
+
+#TCGA, ER Negative Only
+
+create_figure2_a_TCGA_allpath(single_pathway_best_tcga, ersubset="Negative")
+
+#ICBP, ER Positive Only
+
+create_figure2_b_ICBP_allpath(single_pathway_best_icbp, ersubset = "Positive")
+
+#ICBP, ER Negative Only
+
+create_figure2_b_ICBP_allpath(single_pathway_best_icbp, ersubset = "Negative")
+```
+
+###Supplemental Figures 5(A)-(G): Boxplot GFRN pathway activity across breast cancer clinical subtypes (IHC)
+```{r,echo=FALSE,cache=TRUE}
+#merge subtypes with predictions
+boxplot(er_pos$AKT,er_neg$AKT,pr_pos$AKT,pr_neg$AKT,her_pos$AKT,her_neg$AKT,survival_phen$AKT,growth_phen$AKT,las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"), main="ER/PR/HER2 status in association AKT Pathway", col=c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2,ylab="Estimated AKT pathway activity")
+boxplot(er_pos$BAD,er_neg$BAD,pr_pos$BAD,pr_neg$BAD,her_pos$BAD,her_neg$BAD,survival_phen$BAD,growth_phen$BAD,las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"),  main="ER/PR/HER2 status in association BAD Pathway",col=c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2,ylab="Estimated BAD pathway activity")
+boxplot(er_pos$HER2,er_neg$HER2,pr_pos$HER2,pr_neg$HER2,her_pos$HER2,her_neg$HER2, survival_phen$HER2,growth_phen$HER2,las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"), main="ER/PR/HER2 status in association HER2 Pathway",col=c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2,ylab="Estimated HER2 pathway activity")
+boxplot(er_pos$IGF1R,er_neg$IGF1R,pr_pos$IGF1R,pr_neg$IGF1R,her_pos$IGF1R,her_neg$IGF1R,survival_phen$IGF1R,growth_phen$IGF1R, las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"), main="ER/PR/HER2 status in association IGF1R Pathway",col= c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2,ylab="Estimated IGF1R pathway activity")
+boxplot(er_pos$EGFR,er_neg$EGFR,pr_pos$EGFR,pr_neg$EGFR,her_pos$EGFR,her_neg$EGFR,survival_phen$EGFR,growth_phen$EGFR, las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"), main="ER/PR/HER2 status in association EGFR Pathway",col= c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2, ylab="Estimated EGFR pathway activity")
+boxplot(er_pos$KRASGV,er_neg$KRASGV,pr_pos$KRASGV,pr_neg$KRASGV,her_pos$KRASGV,her_neg$KRASGV,survival_phen$KRASGV,growth_phen$KRASGV,las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"), main="ER/PR/HER2 status in association KRAS Pathway",col= c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2, ylab="Estimated KRAS pathway activity")
+boxplot(er_pos$RAF1,er_neg$RAF1,pr_pos$RAF1,pr_neg$RAF1,her_pos$RAF1,her_neg$RAF1,survival_phen$RAF1,growth_phen$RAF1, las=2,at=c(1,2,4,5,7,8,10,11), names=c("ER+","ER-","PR+","PR-","HER2+","HER2-","Survival","Growth"), main="ER/PR/HER2 status in association RAF1 Pathway",col= c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FFFF33","#F781BF","coral3","aquamarine4"), cex.axis=1.2,ylab="Estimated RAF1 pathway activity")
+
+```
+
+###Supplemental Figures 6(A)-(G): Boxplot GFRN pathway activity across breast cancer intrinsic subtypes (PAM50)
+```{r, echo=FALSE,cache=TRUE}
+
+# change TCGA BRCA names from short to long
+#rownames(pam50)<-short_to_long_TCGA_id(longnames = colnames(test),shortnames = gsub(pattern = "\\.",replacement = "-",rownames(pam50)))
+pam50_subset=subset(pam50, pam50$PAM50!="Normal")
+
+
+#subtypes_preds<-merge_drop(single_pathway_best_tcga,pam50_subset)
+basal<-single_pathway_best_tcga[single_pathway_best_tcga$PAM50=="Basal",]
+her2<-single_pathway_best_tcga[single_pathway_best_tcga$PAM50=="Her2",]
+lumA<-single_pathway_best_tcga[single_pathway_best_tcga$PAM50=="LumA",]
+lumB<-single_pathway_best_tcga[single_pathway_best_tcga$PAM50=="LumB",]
+
+# boxplots for GFRN activity across intrinistic subtypes
+par(mfrow=c(1,1),lwd=3)
+boxplot(basal$AKT,her2$AKT,lumA$AKT,lumB$AKT,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="AKT Activity",names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association AKT Pathway")
+boxplot(basal$BAD,her2$BAD,lumA$BAD,lumB$BAD,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="BAD Activity",names = c("Basal","Her2","LumA","LumB"),las=1,main="Intrinsic subtypes in association BAD Pathway")
+boxplot(basal$EGFR,her2$EGFR,lumA$EGFR,lumB$EGFR,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="EGFR Activity",las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association EGFR Pathway")
+boxplot(basal$HER2,her2$HER2,lumA$HER2,lumB$HER2,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="HER2 Activity",las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association HER2 Pathway")
+boxplot(basal$IGF1R,her2$IGF1R,lumA$IGF1R,lumB$IGF1R,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="IGF1R Activity",las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association IGF1R Pathway")
+boxplot(basal$KRAS,her2$KRAS,lumA$KRAS,lumB$KRAS,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="KRAS Activity",las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association KRAS Pathway")
+boxplot(basal$RAF1,her2$RAF1,lumA$RAF1,lumB$RAF1,col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),ylab="RAF1 Activity",las=1,names = c("Basal","Her2","LumA","LumB"),main="Intrinsic subtypes in association RAF1 Pathway")
+
+
+```
+
+###Supplemental Figures 7: Graphical representation of the IHC and intrinsic subtype status distribution for ICBP cell line and TCGA breast tumors. 
+```{r echo=F, cache=T}
+
+tcgaintrinsic$Phenotype <- single_pathway_best_tcga$phenotype
+
+tcgaintrinsic_toorder <- tcgaintrinsic
+tcgaintrinsic_toorder$ER.Status <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$ER.Status)
+tcgaintrinsic_toorder$PR.Status <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$PR.Status)
+tcgaintrinsic_toorder$HER2.Status <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$HER2.Status)
+tcgaintrinsic_toorder$PAM50 <- gsub("Unavailable", 'A',tcgaintrinsic_toorder$PAM50)
+
+ha = HeatmapAnnotation(df = tcgaintrinsic[order(tcgaintrinsic_toorder$Phenotype, tcgaintrinsic_toorder$ER.Status, tcgaintrinsic_toorder$PR.Status, tcgaintrinsic_toorder$HER2.Status, tcgaintrinsic_toorder$PAM50, decreasing = T),c(5,1,2,3,4)],
+                       col = list(PR.Status = c("Positive" =  "#4DAF4A",
+                                                         "Negative" = "#984EA3",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           HER2.Status = c("Positive" =  "#FFFF33",
+                                                           "Negative" = "#F781BF",
+                                                           "Indeterminate" = "black",
+                                                           "Equivocal" = "skyblue",
+                                                           "Unavailable" = "grey"),
+                                           ER.Status = c("Positive" =  "#E41A1C",
+                                                         "Negative" = "#377EB8",
+                                                         "Indeterminate" = "black",
+                                                         "Unavailable" = "grey"),
+                                           PAM50 = c("LumA" = brewer.pal(6, "Dark2")[5],
+                                                     "LumB" = '#fccaa4',
+                                                     "Her2" = brewer.pal(6, "Dark2")[4],
+                                                     "Basal" = '#e41a1c',
+                                                     "Normal" = brewer.pal(6, "Dark2")[6],
+                                                     "Unavailable"="grey"),
+                                  Phenotype=c("Survival Phenotype" =  "coral3", "Growth Phenotype" = "aquamarine4")))
+zero_row_mat = t(single_pathway_best_tcga[,1, drop=F])
+colnames(zero_row_mat) = NULL
+rownames(zero_row_mat) = NULL
+#pdf("tcga_suptable2.pdf", width=10)
+draw(Heatmap(zero_row_mat, top_annotation = ha, column_title = "TCGA Phenotypes vs. Subtypes", show_heatmap_legend = F,col = colorRampPalette(c("white","white","white"))(n = 299), cluster_columns = F), annotation_legend_side = "bottom")
+#dev.off()
+
+```
+
+###Supplemental Figure 8:Survival analysis with TCGA BRCA data...
+```{r,echo=F,cache=T}
+tcga_clinicals<-merge_drop(single_pathway_best_tcga,t(clinicals[c("vital_status","last_contact_days_to","death_days_to"),3:ncol(clinicals)]))
+#tcga_clinicals<-merge_drop(single_pathway_best_tcga_scaled,t(clinicals[c("vital_status","last_contact_days_to","death_days_to"),3:ncol(clinicals)]))
+tcga_clinicals$vital_status<-factor(tcga_clinicals$vital_status)
+tcga_clinicals$vital_status<-mapvalues(tcga_clinicals$vital_status,from=c("Alive","Dead"),to=c(0,1))
+tcga_clinicals$last_contact_days_to<-as.numeric(as.character(tcga_clinicals$last_contact_days_to))
+tcga_clinicals$vital_status<-as.numeric(as.character(tcga_clinicals$vital_status))
+tcga_clinicals$death_days_to<-as.numeric(as.character(tcga_clinicals$death_days_to))
+tcga_clinicals<-tcga_clinicals[!is.na(tcga_clinicals$vital_status),]
+tcga_clinicals$time=NULL
+for(i in 1: nrow(tcga_clinicals)){
+  if(tcga_clinicals$vital_status[i]==1){
+    tcga_clinicals$time[i]<-tcga_clinicals$death_days_to[i]
+  }
+  else{
+    tcga_clinicals$time[i]<-tcga_clinicals$last_contact_days_to[i]  
+  }
+  
+    
+}
+tcga_clinicals<-tcga_clinicals[!tcga_clinicals$time<0,]
+
+
+fit<-survfit(Surv(tcga_clinicals$time,tcga_clinicals$vital_status)~tcga_clinicals$kmeans.cluster)
+plot(fit,col = c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]), xlab="Time in days",ylab="Survival probability",main="Survival in TCGA BRCA\n patients based on 4 subgroups",lwd = 4)
+legend("bottomleft",c("Growth/BAD high", "Growth/BAD low", "Survival/HER2 high", "Survival/HER2 low"),col=c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]),lwd=4,bty = "n",cex=0.9)
+diff<-survdiff(Surv(tcga_clinicals$time,tcga_clinicals$vital_status)~tcga_clinicals$kmeans.cluster,rho=1)
+diff
+
+text(800,0.2,paste("   p-value= ",round(1-pchisq(diff$chisq, length(diff$n)- 1),digit=2)),adj = c(0,0))
+```
+
+###Supplemental Figure 9(A)&(B): Boxplot TCGA Principal Components across BRCA intrinsic subtypes (PAM50)
+```{r, echo=FALSE,warning=FALSE, message=FALSE, fig.width=7, fig.height=7}
+# Take the mean of all the gene expression values for all samples and correlate with the PCs 
+par(mfrow=c(2,1),lwd=4)
+##Supplemental Figure 6(A) 
+plot(pca_mat$x[,1],(apply(test_f,2,mean)), main="Average expression vs PC1\n in TCGA samples", ylab = "Mean Gene Expression (RNA-Seq(TPMlog2)", xlab="PCA Values")
+text(100,3.6,paste("Spearman correlation: ",round(cor(pca_mat$x[,1],(apply(test_f,2,mean)), method= "spearman"),digits = 2),"\np-value < 0.0001",sep=" "),col = "red")
+print(paste("Spearman correlation of PC1 and mean gene expression of each sample: ",cor(pca_mat$x[,1],(apply(test_f,2,mean)), method= "spearman"),sep=" ")) # -0.823
+
+# PCA analysis of intrinstic subtypes in TCGA BRCA
+
+# # boxplot for PCs in TCGA BRCA across subtypes
+# boxplot(pam50_com_tcga$PC1~as.matrix(pam50_com_tcga$PAM50),main="PC1 across intrinsic subtypes",cex=0.8, col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'), cex.axis=1.1,ylab="PC1 values")
+# boxplot(pam50_com_tcga$PC2~as.matrix(pam50_com_tcga$PAM50),main="PC2 across intrinsic subtypes",cex=0.8, col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'), cex.axis=1.1,ylab="PC2 values")
+# boxplot(pam50_com_tcga$PC3~as.matrix(pam50_com_tcga$PAM50),main="PC3 across intrinsic subtypes",cex=0.8, col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),cex.axis=1.1,ylab="PC3 values")
+# boxplot(pam50_com_tcga$PC4~as.matrix(pam50_com_tcga$PAM50),main="PC4 across intrinsic subtypes",cex=0.8, col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),cex.axis=1.1,ylab="PC4 values")
+# boxplot(pam50_com_tcga$PC5~as.matrix(pam50_com_tcga$PAM50),main="PC5 across intrinsic subtypes",cex=0.8, col=c('#e41a1c',brewer.pal(6, "Dark2")[4],brewer.pal(6, "Dark2")[5],'#fccaa4'),cex.axis=1.1,ylab="PC5 values")
+# pam50_com_tcga<-merge_drop(pca_mat$x,pam50_subset)
+# pca_kmeans<-merge_drop(pca_mat$x,single_pathway_best_tcga)
+# boxplot(pca_kmeans$PC1~as.matrix(pca_kmeans$kmeans.cluster),las=2,main="PC1 across subgroups",cex=0.5, col=c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]), cex.axis=0.55,ylab="PC1 values")
+# 
+# boxplot(pca_kmeans$PC2~as.matrix(pca_kmeans$kmeans.cluster),las=2,main="PC2 across subgroups",cex=0.5, col=c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]), cex.axis=0.5,ylab="PC2 values")
+# 
+# boxplot(pca_kmeans$PC3~as.matrix(pca_kmeans$kmeans.cluster),las=2,main="PC3 across subgroups",cex=0.5, col=c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]), cex.axis=0.5,ylab="PC3 values")
+# 
+# boxplot(pca_kmeans$PC4~as.matrix(pca_kmeans$kmeans.cluster),las=2,main="PC4 across subgroups",cex=0.5, col=c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]), cex.axis=0.5,ylab="PC4 values")
+# 
+# boxplot(pca_kmeans$PC5~as.matrix(pca_kmeans$kmeans.cluster),las=2,main="PC5 across subgroups",cex=0.5, col=c(brewer.pal(5, "Set1")[3],brewer.pal(5, "Set1")[5],brewer.pal(5, "Set1")[1],brewer.pal(5, "Set1")[2]), cex.axis=0.5,ylab="PC5 values")
+
+```
+
+###Data for Supplemental Figure 10: Comparison of R2 values (proportion of variance) explained by each model for principle components (PCs) 1 through 5 from TCGA RNA-sequencing breast cancer data.
+```{r,echo=F,cache=T}
+library(knitr)
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga[single_pathway_best_tcga$ER.Status != "Indeterminate",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$ER.Status != "Unavailable",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$PR.Status != "Indeterminate",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$PR.Status != "Unavailable",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$HER2.Status != "Equivocal",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$HER2.Status != "Indeterminate",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$HER2.Status != "Unavailable",]
+single_pathway_best_tcga_noNA <- single_pathway_best_tcga_noNA[single_pathway_best_tcga_noNA$PAM50 != "Unavailable",]
+single_pathway_best_tcga_noNA$ER.Status <- factor(single_pathway_best_tcga_noNA$ER.Status)
+single_pathway_best_tcga_noNA$PR.Status <- factor(single_pathway_best_tcga_noNA$PR.Status)
+single_pathway_best_tcga_noNA$HER2.Status <- factor(single_pathway_best_tcga_noNA$HER2.Status)
+single_pathway_best_tcga_noNA$PAM50 <- factor(single_pathway_best_tcga_noNA$PAM50)
+
+# Breast Cancer TCGA gene expression data
+##tcga expression with low varying genes filtered out
+tcga_expression<- test_f
+##
+run_all_lms <- function(indata){
+  a <- vector()
+  a <- append(a, list(lm(PC1 ~ kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC1 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC2 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC3 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC4 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + phenotype + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + PAM50, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + PAM50 + kmeans.cluster, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype, data=indata)))
+  a <- append(a, list(lm(PC5 ~ ER.Status + PR.Status + HER2.Status + PAM50 + phenotype + kmeans.cluster, data=indata)))
+  return(a)
+}
+##### Run PCA analysis in TCGA
+firstfive_TCGA <- data.frame(pca_mat$x[,1:5])
+firstfive_TCGA <- firstfive_TCGA[rownames(single_pathway_best_tcga_noNA),]
+firstfive_TCGA <- cbind(firstfive_TCGA, single_pathway_best_tcga_noNA[,8:13])
+unknown_remove_all <- run_all_lms(firstfive_TCGA)
+unknown_remove_all_result <- data.frame(R2=unlist(lapply(unknown_remove_all, function(x) summary(x)$r.squared)), p=unlist(lapply(unknown_remove_all, function(x) summary(x)$r.squared)))
+
+result_df_ER <- data.frame(
+PC=c(1:5),
+
+ER=c(unknown_remove_all_result[32,1], #ER PC1
+  unknown_remove_all_result[95,1], #ER PC2
+  unknown_remove_all_result[158,1], #ER PC3
+  unknown_remove_all_result[221,1], #ER PC4
+  unknown_remove_all_result[284,1]), #ER PC5
+
+ER.kmeans=c(unknown_remove_all_result[33,1], #ER + kmeans PC1
+  unknown_remove_all_result[96,1], #ER + kmeans PC2
+  unknown_remove_all_result[159,1], #ER + kmeans PC3
+  unknown_remove_all_result[222,1], #ER + kmeans PC4
+  unknown_remove_all_result[285,1]), #ER + kmeans PC5
+
+ER.kmeans.pval=c(anova(unknown_remove_all[[32]], unknown_remove_all[[33]])[6][2,1], #ER + kmeans PC1
+  anova(unknown_remove_all[[95]], unknown_remove_all[[96]])[6][2,1], #ER + kmeans PC2
+  anova(unknown_remove_all[[158]], unknown_remove_all[[159]])[6][2,1], #ER + kmeans PC3
+  anova(unknown_remove_all[[221]], unknown_remove_all[[222]])[6][2,1], #ER + kmeans PC4
+  anova(unknown_remove_all[[284]], unknown_remove_all[[285]])[6][2,1]), #ER + kmeans PC5
+
+ER.PAM50=c(unknown_remove_all_result[33+3,1], #ER + PAM50 PC1
+  unknown_remove_all_result[96+3,1], #ER + PAM50 PC2
+  unknown_remove_all_result[159+3,1], #ER + PAM50 PC3
+  unknown_remove_all_result[222+3,1], #ER + PAM50 PC4
+  unknown_remove_all_result[285+3,1]), #ER + PAM50 PC5
+
+ER.PAM50.pval=c(anova(unknown_remove_all[[32]], unknown_remove_all[[33+3]])[6][2,1], #ER + PAM50 PC1
+  anova(unknown_remove_all[[95]], unknown_remove_all[[96+3]])[6][2,1], #ER + PAM50 PC2
+  anova(unknown_remove_all[[158]], unknown_remove_all[[159+3]])[6][2,1], #ER + PAM50 PC3
+  anova(unknown_remove_all[[221]], unknown_remove_all[[222+3]])[6][2,1], #ER + PAM50 PC4
+  anova(unknown_remove_all[[284]], unknown_remove_all[[285+3]])[6][2,1]), #ER + PAM50 PC5
+
+ER.phenotype=c(unknown_remove_all_result[33+1,1], #ER + GFRN Pheno PC1
+  unknown_remove_all_result[96+1,1], #ER + GFRN Pheno PC2
+  unknown_remove_all_result[159+1,1], #ER + GFRN Pheno PC3
+  unknown_remove_all_result[222+1,1], #ER + GFRN Pheno PC4
+  unknown_remove_all_result[285+1,1]), #ER + GFRN Pheno PC5
+
+ER.phenotype.pval=c(anova(unknown_remove_all[[32]], unknown_remove_all[[33+1]])[6][2,1], #ER + GFRN Pheno PC1
+  anova(unknown_remove_all[[95]], unknown_remove_all[[96+1]])[6][2,1], #ER + GFRN Pheno PC2
+  anova(unknown_remove_all[[158]], unknown_remove_all[[159+1]])[6][2,1], #ER + GFRN Pheno PC3
+  anova(unknown_remove_all[[221]], unknown_remove_all[[222+1]])[6][2,1], #ER + GFRN Pheno PC4
+  anova(unknown_remove_all[[284]], unknown_remove_all[[285+1]])[6][2,1]), #ER + GFRN Pheno PC5
+
+ER.kmeans.PAM50.pval=c(anova(unknown_remove_all[[33]], unknown_remove_all[[33+3]])[6][2,1],
+  anova(unknown_remove_all[[96]], unknown_remove_all[[96+3]])[6][2,1],
+  anova(unknown_remove_all[[159]], unknown_remove_all[[159+3]])[6][2,1],
+  anova(unknown_remove_all[[222]], unknown_remove_all[[222+3]])[6][2,1],
+  anova(unknown_remove_all[[285]], unknown_remove_all[[285+3]])[6][2,1])
+)
+
+result_df_PR <- data.frame(
+PC=c(1:5),
+
+PR=c(unknown_remove_all_result[16,1], #PR PC1
+  unknown_remove_all_result[79,1], #PR PC2
+  unknown_remove_all_result[142,1], #PR PC3
+  unknown_remove_all_result[205,1], #PR PC4
+  unknown_remove_all_result[268,1]), #PR PC5
+
+PR.kmeans=c(unknown_remove_all_result[17,1], #PR + kmeans PC1
+  unknown_remove_all_result[80,1], #PR + kmeans PC2
+  unknown_remove_all_result[143,1], #PR + kmeans PC3
+  unknown_remove_all_result[206,1], #PR + kmeans PC4
+  unknown_remove_all_result[269,1]), #PR + kmeans PC5
+
+PR.kmeans.pval=c(anova(unknown_remove_all[[16]], unknown_remove_all[[17]])[6][2,1], #PR + kmeans PC1
+  anova(unknown_remove_all[[79]], unknown_remove_all[[80]])[6][2,1], #PR + kmeans PC2
+  anova(unknown_remove_all[[142]], unknown_remove_all[[143]])[6][2,1], #PR + kmeans PC3
+  anova(unknown_remove_all[[205]], unknown_remove_all[[206]])[6][2,1], #PR + kmeans PC4
+  anova(unknown_remove_all[[268]], unknown_remove_all[[269]])[6][2,1]), #PR + kmeans PC5
+
+PR.PAM50=c(unknown_remove_all_result[17+3,1], #PR + PAM50 PC1
+  unknown_remove_all_result[80+3,1], #PR + PAM50 PC2
+  unknown_remove_all_result[143+3,1], #PR + PAM50 PC3
+  unknown_remove_all_result[206+3,1], #PR + PAM50 PC4
+  unknown_remove_all_result[269+3,1]), #PR + PAM50 PC5
+
+PR.PAM50.pval=c(anova(unknown_remove_all[[16]], unknown_remove_all[[17+3]])[6][2,1], #PR + PAM50 PC1
+  anova(unknown_remove_all[[79]], unknown_remove_all[[80+3]])[6][2,1], #PR + PAM50 PC2
+  anova(unknown_remove_all[[142]], unknown_remove_all[[143+3]])[6][2,1], #PR + PAM50 PC3
+  anova(unknown_remove_all[[205]], unknown_remove_all[[206+3]])[6][2,1], #PR + PAM50 PC4
+  anova(unknown_remove_all[[268]], unknown_remove_all[[269+3]])[6][2,1]), #PR + PAM50 PC5
+
+
+PR.phenotype=c(unknown_remove_all_result[17+1,1], #PR + GFRN Pheno PC1
+  unknown_remove_all_result[80+1,1], #PR + GFRN Pheno PC2
+  unknown_remove_all_result[143+1,1], #PR + GFRN Pheno PC3
+  unknown_remove_all_result[206+1,1], #PR + GFRN Pheno PC4
+  unknown_remove_all_result[269+1,1]), #PR + GFRN Pheno PC5
+
+PR.phenotype.pval=c(anova(unknown_remove_all[[16]], unknown_remove_all[[17+1]])[6][2,1], #PR + GFRN Pheno PC1
+  anova(unknown_remove_all[[79]], unknown_remove_all[[80+1]])[6][2,1], #PR + GFRN Pheno PC2
+  anova(unknown_remove_all[[142]], unknown_remove_all[[143+1]])[6][2,1], #PR + GFRN Pheno PC3
+  anova(unknown_remove_all[[205]], unknown_remove_all[[206+1]])[6][2,1], #PR + GFRN Pheno PC4
+  anova(unknown_remove_all[[268]], unknown_remove_all[[269+1]])[6][2,1]), #PR + GFRN Pheno PC5
+
+PR.kmeans.PAM50.pval=c(anova(unknown_remove_all[[17]], unknown_remove_all[[17+3]])[6][2,1], #PR + PAM50 PC1
+  anova(unknown_remove_all[[80]], unknown_remove_all[[80+3]])[6][2,1], #PR + PAM50 PC2
+  anova(unknown_remove_all[[143]], unknown_remove_all[[143+3]])[6][2,1], #PR + PAM50 PC3
+  anova(unknown_remove_all[[206]], unknown_remove_all[[206+3]])[6][2,1],
+  anova(unknown_remove_all[[269]], unknown_remove_all[[269+3]])[6][2,1])
+)
+
+result_df_HER2 <- data.frame(
+PC=c(1:5),
+
+HER2=c(unknown_remove_all_result[8,1], #HER2 PC1
+  unknown_remove_all_result[71,1], #HER2 PC2
+  unknown_remove_all_result[134,1], #HER2 PC3
+  unknown_remove_all_result[197,1], #HER2 PC4
+  unknown_remove_all_result[260,1]), #HER2 PC5
+
+HER2.kmeans=c(unknown_remove_all_result[9,1], #HER2 + kmeans PC1
+  unknown_remove_all_result[72,1], #HER2 + kmeans PC2
+  unknown_remove_all_result[135,1], #HER2 + kmeans PC3
+  unknown_remove_all_result[198,1], #HER2 + kmeans PC4
+  unknown_remove_all_result[261,1]), #HER2 + kmeans PC5
+
+HER2.kmeans.pval=c(anova(unknown_remove_all[[8]], unknown_remove_all[[9]])[6][2,1], #HER2 + kmeans PC1
+  anova(unknown_remove_all[[71]], unknown_remove_all[[72]])[6][2,1], #HER2 + kmeans PC2
+  anova(unknown_remove_all[[134]], unknown_remove_all[[135]])[6][2,1], #HER2 + kmeans PC3
+  anova(unknown_remove_all[[197]], unknown_remove_all[[198]])[6][2,1], #HER2 + kmeans PC4
+  anova(unknown_remove_all[[260]], unknown_remove_all[[261]])[6][2,1]), #HER2 + kmeans PC5
+
+HER2.PAM50=c(unknown_remove_all_result[9+3,1], #HER2 + PAM50 PC1
+  unknown_remove_all_result[72+3,1], #HER2 + PAM50 PC2
+  unknown_remove_all_result[135+3,1], #HER2 + PAM50 PC3
+  unknown_remove_all_result[198+3,1], #HER2 + PAM50 PC4
+  unknown_remove_all_result[261+3,1]), #HER2 + PAM50 PC5
+
+HER2.PAM50.pval=c(anova(unknown_remove_all[[8]], unknown_remove_all[[9+3]])[6][2,1], #HER2 + PAM50 PC1
+  anova(unknown_remove_all[[71]], unknown_remove_all[[72+3]])[6][2,1], #HER2 + PAM50 PC2
+  anova(unknown_remove_all[[134]], unknown_remove_all[[135+3]])[6][2,1], #HER2 + PAM50 PC3
+  anova(unknown_remove_all[[197]], unknown_remove_all[[198+3]])[6][2,1], #HER2 + PAM50 PC4
+  anova(unknown_remove_all[[260]], unknown_remove_all[[261+3]])[6][2,1]), #HER2 + PAM50 PC5
+
+HER2.phenotype=c(unknown_remove_all_result[9+1,1], #HER2 + GFRN Pheno PC1
+  unknown_remove_all_result[72+1,1], #HER2 + GFRN Pheno PC2
+  unknown_remove_all_result[135+1,1], #HER2 + GFRN Pheno PC3
+  unknown_remove_all_result[198+1,1], #HER2 + GFRN Pheno PC4
+  unknown_remove_all_result[261+1,1]), #HER2 + GFRN Pheno PC5
+
+HER2.phenotype.pval=c(anova(unknown_remove_all[[8]], unknown_remove_all[[9+1]])[6][2,1], #HER2 + GFRN Pheno PC1
+  anova(unknown_remove_all[[71]], unknown_remove_all[[72+1]])[6][2,1], #HER2 + GFRN Pheno PC2
+  anova(unknown_remove_all[[134]], unknown_remove_all[[135+1]])[6][2,1], #HER2 + GFRN Pheno PC3
+  anova(unknown_remove_all[[197]], unknown_remove_all[[198+1]])[6][2,1], #HER2 + GFRN Pheno PC4
+  anova(unknown_remove_all[[260]], unknown_remove_all[[261+1]])[6][2,1]), #HER2 + GFRN Pheno PC5
+
+HER2.kmeans.PAM50.pval=c(anova(unknown_remove_all[[9]], unknown_remove_all[[9+3]])[6][2,1],
+  anova(unknown_remove_all[[72]], unknown_remove_all[[72+3]])[6][2,1],
+  anova(unknown_remove_all[[135]], unknown_remove_all[[135+3]])[6][2,1],
+  anova(unknown_remove_all[[198]], unknown_remove_all[[198+3]])[6][2,1],
+  anova(unknown_remove_all[[261]], unknown_remove_all[[261+3]])[6][2,1])
+)
+
+result_df_all3 <- data.frame(
+PC=c(1:5),
+
+ER.PR.HER2=c(unknown_remove_all_result[56,1], #ER/PR/HER2 PC1
+  unknown_remove_all_result[119,1], #ER/PR/HER2 PC2
+  unknown_remove_all_result[182,1], #ER/PR/HER2 PC3
+  unknown_remove_all_result[245,1], #ER/PR/HER2 PC4
+  unknown_remove_all_result[308,1]), #ER/PR/HER2 PC5
+
+ER.PR.HER2.kmeans=c(unknown_remove_all_result[57,1], #ER/PR/HER2 + kmeans PC1
+  unknown_remove_all_result[120,1], #ER/PR/HER2 + kmeans PC2
+  unknown_remove_all_result[183,1], #ER/PR/HER2 + kmeans PC3
+  unknown_remove_all_result[246,1], #ER/PR/HER2 + kmeans PC4
+  unknown_remove_all_result[309,1]), #ER/PR/HER2 + kmeans PC5
+
+ER.PR.HER2.kmeans.pval=c(anova(unknown_remove_all[[56]], unknown_remove_all[[57]])[6][2,1], #ER.PR.HER2 + kmeans PC1
+  anova(unknown_remove_all[[119]], unknown_remove_all[[120]])[6][2,1], #ER.PR.HER2 + kmeans PC2
+  anova(unknown_remove_all[[182]], unknown_remove_all[[183]])[6][2,1], #ER.PR.HER2 + kmeans PC3
+  anova(unknown_remove_all[[245]], unknown_remove_all[[246]])[6][2,1], #ER.PR.HER2 + kmeans PC4
+  anova(unknown_remove_all[[308]], unknown_remove_all[[309]])[6][2,1]), #ER.PR.HER2 + kmeans PC5
+
+ER.PR.HER2.PAM50=c(unknown_remove_all_result[57+3,1], #ER/PR/HER2 + PAM50 PC1
+  unknown_remove_all_result[120+3,1], #ER/PR/HER2 + PAM50 PC2
+  unknown_remove_all_result[183+3,1], #ER/PR/HER2 + PAM50 PC3
+  unknown_remove_all_result[246+3,1], #ER/PR/HER2 + PAM50 PC4
+  unknown_remove_all_result[309+3,1]), #ER/PR/HER2 + PAM50 PC5
+
+ER.PR.HER2.PAM50.pval=c(anova(unknown_remove_all[[56]], unknown_remove_all[[57+3]])[6][2,1], #ER.PR.HER2 + PAM50 PC1
+  anova(unknown_remove_all[[119]], unknown_remove_all[[120+3]])[6][2,1], #ER.PR.HER2 + PAM50 PC2
+  anova(unknown_remove_all[[182]], unknown_remove_all[[183+3]])[6][2,1], #ER.PR.HER2 + PAM50 PC3
+  anova(unknown_remove_all[[245]], unknown_remove_all[[246+3]])[6][2,1], #ER.PR.HER2 + PAM50 PC4
+  anova(unknown_remove_all[[308]], unknown_remove_all[[309+3]])[6][2,1]), #ER.PR.HER2 + PAM50 PC5
+
+ER.PR.HER2.phenotype=c(unknown_remove_all_result[57+1,1], #ER/PR/HER2 + GFRN Pheno PC1
+  unknown_remove_all_result[120+1,1], #ER/PR/HER2 + GFRN Pheno PC2
+  unknown_remove_all_result[183+1,1], #ER/PR/HER2 + GFRN Pheno PC3
+  unknown_remove_all_result[246+1,1], #ER/PR/HER2 + GFRN Pheno PC4
+  unknown_remove_all_result[309+1,1]), #ER/PR/HER2 + GFRN Pheno PC5
+
+ER.PR.HER2.phenotype.pval=c(anova(unknown_remove_all[[56]], unknown_remove_all[[57+1]])[6][2,1], #ER.PR.HER2 + GFRN Pheno PC1
+  anova(unknown_remove_all[[119]], unknown_remove_all[[120+1]])[6][2,1], #ER.PR.HER2 + GFRN Pheno PC2
+  anova(unknown_remove_all[[182]], unknown_remove_all[[183+1]])[6][2,1], #ER.PR.HER2 + GFRN Pheno PC3
+  anova(unknown_remove_all[[245]], unknown_remove_all[[246+1]])[6][2,1], #ER.PR.HER2 + GFRN Pheno PC4
+  anova(unknown_remove_all[[308]], unknown_remove_all[[309+1]])[6][2,1]), #ER.PR.HER2 + GFRN Pheno PC5
+
+ER.PR.HER2.kmeans.PAM50.pval=c(anova(unknown_remove_all[[57]], unknown_remove_all[[57+3]])[6][2,1],
+  anova(unknown_remove_all[[120]], unknown_remove_all[[120+3]])[6][2,1],
+  anova(unknown_remove_all[[183]], unknown_remove_all[[183+3]])[6][2,1],
+  anova(unknown_remove_all[[246]], unknown_remove_all[[246+3]])[6][2,1],
+  anova(unknown_remove_all[[309]], unknown_remove_all[[309+3]])[6][2,1])
+)
+
+result_df_misc <- data.frame(
+PC=c(1:5),
+
+kmeans=c(unknown_remove_all_result[1,1],
+  unknown_remove_all_result[64,1],
+  unknown_remove_all_result[127,1],
+  unknown_remove_all_result[190,1],
+  unknown_remove_all_result[253,1]),
+
+PAM50=c(unknown_remove_all_result[1+3,1],
+  unknown_remove_all_result[64+3,1],
+  unknown_remove_all_result[127+3,1],
+  unknown_remove_all_result[190+3,1],
+  unknown_remove_all_result[253+3,1]),
+
+kmeans.PAM50=c(unknown_remove_all_result[1+4,1],
+  unknown_remove_all_result[64+4,1],
+  unknown_remove_all_result[127+4,1],
+  unknown_remove_all_result[190+4,1],
+  unknown_remove_all_result[253+4,1]),
+
+ER.PR.HER2.PAM50.kmeans=c(unknown_remove_all_result[1+60,1],
+  unknown_remove_all_result[64+60,1],
+  unknown_remove_all_result[127+60,1],
+  unknown_remove_all_result[190+60,1],
+  unknown_remove_all_result[253+60,1])
+)
+
+kable(result_df_ER)
+kable(result_df_PR)
+kable(result_df_HER2)
+kable(result_df_all3)
+kable(result_df_misc)
+
+```
+
+###Supplemental Figure 12: Correlations between pathway activation estimates and drug response values between ER+ and ER- and between HER+ and HER2- samples in breast cancer cell lines. 
+```{r, echo=F,cache=T}
+#seperate ER status by Shelley
+pred_drug_subtype=merge_drop(pred_drug,icbp_status)
+#colnames(pred_drug_subtype)
+icbp_drug_er_pos=pred_drug_subtype[pred_drug_subtype$ER=="Positive",]
+#dim(icbp_drug_er_pos) #18
+#colnames(icbp_drug_er_pos)
+#View(icbp_drug_er_pos)
+icbp_drug_er_neg=pred_drug_subtype[pred_drug_subtype$ER=="Negative",]
+#dim(icbp_drug_er_neg) #32
+#row.names(icbp_drug_er_neg)
+#################
+#seperate ER status
+icbp_drug_er_pos=pred_drug[pred_drug$ER.Status=="Positive",]
+dim(icbp_drug_er_pos) #17
+
+
+icbp_drug_er_neg=pred_drug[pred_drug$ER.Status=="Negative",]
+dim(icbp_drug_er_neg) #31
+
+
+cors_drugs_er_pos=cor(icbp_drug_er_pos[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_er_pos[, 1:7],method="spearman",use="pairwise")
+
+cors_drugs_er_neg=cor(icbp_drug_er_neg[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_er_neg[, 1:7],method="spearman",use="pairwise")
+
+
+colnames(cors_drugs_er_pos)[6]="KRAS"
+rownames(cors_drugs_er_pos)[1]="AKT inhibitor"
+
+colnames(cors_drugs_er_neg)[6]="KRAS"
+rownames(cors_drugs_er_neg)[1]="AKT inhibitor"
+
+#ER Pos
+#pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_ERNegative.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_er_pos, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45, main="ICBP, ER Positive", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F, ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+#dev.off()
+
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+#ER neg
+#pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_ER_Pos.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_er_neg, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45,main="ICBP, ER Negative", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F,ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+#dev.off()
+
+#####Shelley's code###please verify the cell line numbers
+# seperate HER2
+#icbp_drug_her2_pos=pred_drug_subtype[pred_drug_subtype$HER2.y=="Positive",]
+#dim(icbp_drug_her2_pos) #18
+#icbp_drug_her2_neg=pred_drug_subtype[pred_drug_subtype$HER2.y=="Negative",]
+#dim(icbp_drug_her2_neg) #32
+#####updated code
+# seperate HER2
+icbp_drug_her2_pos=pred_drug[pred_drug$HER2.Status=="Positive",]
+#dim(icbp_drug_her2_pos) #21
+icbp_drug_her2_neg=pred_drug[pred_drug$HER2.Status=="Negative",]
+#dim(icbp_drug_her2_neg) #29
+
+cors_drugs_her2_pos=cor(icbp_drug_her2_pos[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_her2_pos[, 1:7],method="spearman",use="pairwise")
+
+
+
+cors_drugs_her2_neg=cor(icbp_drug_her2_neg[,c("Sigma.AKT1.2.inhibitor","CGC.11047","Cisplatin","Docetaxel","Everolimus","GSK2119563","GSK2126458","GSK1059615", "GSK1120212", "GSK1059868","GSK2141795", "PF.4691502", "Paclitaxel","Rapamycin","Temsirolimus","Erlotinib","Gefitinib","AZD6244","AG1478","Lapatinib")],icbp_drug_her2_neg[, 1:7],method="spearman",use="pairwise")
+
+
+colnames(cors_drugs_her2_pos)[6]="KRAS"
+rownames(cors_drugs_her2_pos)[1]="AKT inhibitor"
+
+colnames(cors_drugs_her2_neg)[6]="KRAS"
+rownames(cors_drugs_her2_neg)[1]="AKT inhibitor"
+
+#HER2 (+)
+#pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_HER2_Pos.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_her2_pos, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45, main="ICBP, HER2 Positive ", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F,ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+
+
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)
+#ER neg
+
+#pdf("~/Dropbox/Multipathway_profiling_paper/Genome_Medicine_Submission/Revison/Figures_Revised/DrugHeatMaps_HER2_NEg2.pdf", width=6)
+par(oma=c(2,2,2,7))
+heatmap.2(cors_drugs_her2_neg, col=my_palette, trace='none', density.info = 'none', margins = c(6,6), cexCol = 2, cexRow = 1.5, srtCol=45, main="ICBP, HER2 Negative", RowSideColors = c("pink","yellow","yellow","yellow","pink","pink","pink","pink","lightblue", "pink","pink", "pink", "yellow","pink","pink","lightblue","lightblue","lightblue","lightblue", "pink"), scale="row",key=F,ColSideColors = c("coral3","aquamarine4","aquamarine4","coral3","coral3","aquamarine4","aquamarine4"))
+#legend("bottomleft",legend = c("PI3K/AKT/mTOR inhibitors", "Chemotherapeutics","EGFR/MEK inhibitors","Growth phenotype","Survival phenotype"), col = c("pink","yellow","lightblue","coral3","aquamarine4"),  lty= 1,lwd = 10,cex = 1)"
+#dev.off()
+
+
+```
+### Supplemntal Figure 13: Comparison of Lapatinib sensitivity
+```{r,cache=TRUE,echo=FALSE,warning=FALSE}
+single_pathway_best_icbp$kmeans.cluster<-mapvalues(single_pathway_best_icbp$kmeans.cluster,from=c("Survival/HER2 high","Survival/HER2 low","Growth/BAD high",
+"Growth/BAD low"),to=c("Survival\nHER2 high", "Survival\nHER2 low","Growth\nBAD high","Growth\nBAD low"))
+
+subgroup_plot<-function(data,selected){
+  ggplot(subset(data,select = c("kmeans.cluster","value")), aes(factor(data$kmeans.cluster, 
+                                              levels = c("Survival\nHER2 high",
+                                                         "Survival\nHER2 low",
+                                                         "Growth\nBAD high",
+                                                         "Growth\nBAD low")), as.numeric(value)),font=2) +
+    geom_boxplot(outlier.shape = NA, fill=pathway_colors) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"Phenotype subgroups",sep="\n"))
+}
+intrinsic_plot<-function(data,selected){
+  ggplot(data,aes(factor(Intrinsic.subtype),as.numeric(data$value))) +
+    geom_boxplot(outlier.shape = NA, fill=c('#e41a1c','#fccaa4',brewer.pal(6, "Dark2")[5],brewer.pal(6, "Dark2")[6])) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"Intrinsic subtypes",sep="\n"))
+}
+er_plot<-function(data,selected){
+  if(!nrow(data[data$ER.Status=="Unavailable",])>sum(is.na(data[data$ER.Status=="Unavailable",4])))#if we have "Unavalable" status with NA values, will filter them out
+  {
+    ggplot(data, aes(factor(data$ER.Status), as.numeric(data$value))) +
+    geom_boxplot(outlier.shape = NA, fill=c( "#377EB8","#E41A1C")) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"ER",sep="\n"))
+  }
+  else{
+    ggplot(data, aes(factor(data$ER.Status), as.numeric(data$value))) +
+    geom_boxplot(outlier.shape = NA, fill=c( "#377EB8","#E41A1C", "grey")) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"ER",sep="\n"))
+  }
+}
+pr_plot<-function(data,selected){
+  if(!nrow(data[data$PR.Status=="Unavailable",])>sum(is.na(data[data$PR.Status=="Unavailable",4])))#if we have "Unavalable" status with NA values, will filter them out
+  {
+    ggplot(data, aes(factor(PR.Status), as.numeric(data$value))) +
+    geom_boxplot(outlier.shape = NA, fill=c("#984EA3","#4DAF4A")) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"PR",sep="\n"))
+  }
+  else{
+    ggplot(data, aes(factor(PR.Status), as.numeric(data$value))) +
+    geom_boxplot(outlier.shape = NA, fill=c("#984EA3","#4DAF4A","grey")) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"PR",sep="\n"))
+  }
+  
+}
+her2_plot<-function(data,selected){
+  ggplot(data, aes(factor(HER2.Status), as.numeric(data$value))) +
+    geom_boxplot(outlier.shape = NA, fill=c("#F781BF","#FFFF33","grey")) + 
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+          axis.line.x = element_line(colour = 'black', size=0.5, linetype='solid'),
+          axis.line.y = element_line(colour = 'black', size=0.5, linetype='solid')) +
+    xlab("") +
+    ylab("Sensitivity(-log(EC50))") +
+    geom_point(position=position_jitter(width = 0.1)) +
+    ggtitle(paste(selected,"HER2",sep="\n"))
+}
+
+plot_drug_boxplots_final <- function(drugdata, selected){
+
+  merged_types <- merge_drop(intrinsic.subtype,drugdata)
+  merged <- merge(merged_types, subset(single_pathway_best_icbp, select = "kmeans.cluster"), by=0, all=T)
+  
+  ####Creating boxplots using our phenotypes/subgroups  
+  merged_melt <- melt(merged, id.vars = c("Row.names", "kmeans.cluster"))
+  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
+  merged_melt_s<-merged_melt_s[complete.cases(merged_melt_s),]
+  theplot1 <- subgroup_plot(merged_melt_s,selected)
+  
+  ##Creating response boxplots using Intrinsic subtyping approach   
+  merged_melt <- melt(merged, id.vars = c("Row.names", "Intrinsic.subtype"))
+  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
+  merged_melt_s_f<-merged_melt_s[!is.na(merged_melt_s$Intrinsic.subtype),]
+  theplot2 <-intrinsic_plot(merged_melt_s_f,selected)
+  
+  ####Creating boxplots using ER status 
+  merged_melt <- melt(merged, id.vars = c("Row.names", "ER.Status"))
+  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
+  merged_melt_s_f<-merged_melt_s[!is.na(merged_melt_s$ER.Status),]
+  theplot3 <-er_plot(merged_melt_s_f,selected) 
+  ####Creating boxplots using PR status 
+  merged_melt <- melt(merged, id.vars = c("Row.names", "PR.Status"))
+  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
+  merged_melt_s_f<-merged_melt_s[!is.na(merged_melt_s$PR.Status),]
+  theplot4 <-pr_plot(merged_melt_s_f,selected)
+   
+  ####Creating boxplots using HER2 status 
+  merged_melt <- melt(merged, id.vars = c("Row.names", "HER2.Status"))
+  merged_melt_s <- merged_melt[merged_melt$variable == selected,]
+  merged_melt_s_f<-merged_melt_s[!is.na(merged_melt_s$HER2.Status),]
+  theplot5 <-her2_plot(merged_melt_s_f,selected) 
+      
+grid.arrange(theplot1,theplot2, nrow=2,ncol=1)
+grid.arrange(theplot3,theplot4,theplot5, nrow=2,ncol=2)
+}
+#pdf("Drug_response_comparison.pdf")
+#for(i in 1:ncol(drugs_selected))
+# {
+#   print(paste("Analyzing..",colnames(drugs_selected)[i]),sep=" ")
+#   plot_drug_boxplots_final(drugs_selected, colnames(drugs_selected)[i])
+# }
+#dev.off()
+plot_drug_boxplots_final(drugs_selected, "Lapatinib")
+
+```
+
+```{r, echo=FALSE}
+time<-format(Sys.time(),"%a %b %d %X %Y")
+```
+This analysis was run on `r time` 
